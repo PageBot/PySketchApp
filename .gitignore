@@ -102,3 +102,11 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# OSX Desktop
+.DS_Store
+
+# Some local folders not to commit, standard for other PageBot repositories
+_local
+_export
+_images
