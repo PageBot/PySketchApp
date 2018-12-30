@@ -17,15 +17,20 @@
 #
 from classes import *
 
-def readSketchDocument(path):
+def sketchapp2Py(path):
   """Read a sketch file and answer a SketchDocument that contains the interpreted data.
 
   >>> path = 'TestImage.sketch'
-  >>> doc = readSketchDocument(path)
+  >>> doc = sketchapp2Py(path)
   >>> doc.currentPageIndex
   0
   >>> doc.do_objectID is not None
   True
+  >>> len(doc.pages)
+  1
+  >>> page = doc.pages[0]
+  >>> page.frame, page.isLocked, page.isVisible
+  (<rect x=0 y=0 w=0 h=0 constain=False>, False, True)
   """
 
 
@@ -42,21 +47,15 @@ def readSketchDocument(path):
     doc = SketchDocument(d)
   else:
     return None # Cannot read
-  '''
-  for key, (sketchMethod, default) in readMethods:
-    if key in zipInfo:
-      fc = f.read(key)
-      info = json.loads(fc)
-      sketchMethod(info)
-
+  
   # Read pages and build self.imagesId2Path dictionary, as we find sId-->name relations.
   for key in zipInfo:
     if key.startswith(PAGES_JSON): # This much be a page.
       fc = f.read(key)
       sketchPage = json.loads(fc)
-      self._SketchPage2Document(sketchPage, doc)
-  #print(self.imagesId2Path)
+      doc.pages.append(SketchPage(sketchPage))
 
+  '''
   # Now scan images and save them as file in _local, preferrably with their original name.
   for key in zipInfo:
     if key.startswith(IMAGES_JSON): # This must be an image

@@ -92,8 +92,8 @@ class SketchBase:
 
   def __init__(self, d):
     if d is None:
-      d = {} # Forces values to default.
-    self.name = self.NAME
+      d = {}
+    self._class = self.CLASS # Forces values to default.
     # Expect dict of attrNames and (method_Or_SketchBaseClass, default) as value
     for attrName, (m, default) in self.ATTRS.items():
       setattr(self, attrName, m(d.get(attrName, default)))
@@ -103,13 +103,13 @@ class SketchBase:
     return getattr(self, attrName)
 
   def __repr__(self):
-    s = ['<%s' % self.name]
+    s = ['<%s' % self._class]
     for attrName in sorted(self.ATTRS):
       s.append('%s=%s' % (attrName, getattr(self, attrName)))
     return ' '.join(s) + '>'
 
   def asDict(self):
-    d = dict(name=self.name)
+    d = dict(_class=self._class)
     for attrName, (m, default) in self.ATTRS.items():
       d[attrName] = getattr(self, attrName)
     return d
@@ -129,9 +129,9 @@ class SketchColor(SketchBase):
   >>> color.red
   0.5
   >>> sorted(color.asDict())
-  ['alpha', 'blue', 'green', 'name', 'red']
+  ['_class', 'alpha', 'blue', 'green', 'red']
   """
-  NAME = 'color'
+  CLASS = 'color'
   ATTRS = {
     'red': (asColorNumber, 0),
     'green': (asColorNumber, 0),
@@ -155,7 +155,7 @@ class SketchBorder(SketchBase):
   >>> border.color
   <color alpha=0 blue=0 green=0 red=1>
   """
-  NAME = 'border'
+  CLASS = 'border'
   ATTRS = {
     'isEnabled': (asBool, True),
     'color': (SketchColor, None),
@@ -175,7 +175,7 @@ class SketchGradientStop(SketchBase):
   >>> gs.color, gs.position
   (<color alpha=0 blue=1 green=0 red=0>, 1)
   """
-  NAME = 'gradientStop'
+  CLASS = 'gradientStop'
   ATTRS = {
     'color': (SketchColor, None),
     'position': (asPoint, 0), 
@@ -198,7 +198,7 @@ class SketchGradient(SketchBase):
   to: SketchPositionString
 
   """
-  NAME = 'gradient'
+  CLASS = 'gradient'
   ATTRS = {
     'elipseLength': (asNumber, 0),
     'from_': (asPoint, None),  # Initilaizes to (0, 0)
@@ -270,15 +270,28 @@ type SketchEncodedAttributes = {
   }
 }
 
-type SketchRect = {
+'''
+
+class SketchRect:
+  """
   _class: 'rect',
   constrainProportions: bool,
   height: number,
   width: number,
   x: number,
   y: number
-}
+  """
+  def __init__(self, d):
+    self.x = d.get('x', 0)
+    self.y = d.get('y', 0)
+    self.w = d.get('width', 100)
+    self.h = d.get('height', 100)
+    self.constrainProportions = d.get('constrainProportions', False)
 
+  def __repr__(self):
+    return '<rect x=%s y=%d w=%d h=%d constain=%s>' % (self.x, self.y, self.w, self.h, self.constrainProportions)
+
+'''
 type SketchTextStyle = {
   _class: 'textStyle',
   encodedAttributes: SketchEncodedAttributes
@@ -669,7 +682,7 @@ class SketchDocument(SketchBase):
   
 
   """
-  NAME = 'document'
+  CLASS = 'document'
   ATTRS = {
     'do_objectID': (asId, 0),
     #assets: SketchAssetsCollection,
@@ -686,9 +699,9 @@ class SketchDocument(SketchBase):
     SketchBase.__init__(self, d)
     self.pages = [] # List of SketchPage instances, filled by Pages JSON.
 
-'''
-// pages/*.json
-type SketchPage = {
+# pages/*.json
+class SketchPage(SketchBase):
+  """
   _class: 'page',
   do_objectID: UUID,
   exportOptions: SketchExportOptions,
@@ -698,11 +711,11 @@ type SketchPage = {
   includeInCloudUpload: bool,
   isFlippedHorizontal: bool,
   isFlippedVertical: bool,
-  isLocked: bool,
-  isVisible: bool,
+  + isLocked: bool,
+  + isVisible: bool,
   layerListExpandedType: number,
   layers: [SketchSymbolMaster],
-  name: string,
+  + name: string,
   nameIsFixed: bool,
   resizingType: number,
   rotation: number,
@@ -710,7 +723,15 @@ type SketchPage = {
   style: SketchStyle,
   verticalRulerData: SketchRulerData
 }
-
+  """
+  CLASS = 'page'
+  ATTRS = {
+    'do_objectID': (asId, 0),    
+    'frame': (SketchRect, (0, 0, 100, 100)),
+    'isLocked': (asBool, False),
+    'isVisible': (asBool, True),
+  }
+'''
 // meta.json
 type SketchMeta = {
   commit: string,
