@@ -28,6 +28,9 @@
 #  conntection to it, so PageBot can read/write Document and Element
 #  instances into SketchApp files.
 #
+#  Webviewer
+#  https://github.com/AnimaApp/sketch-web-viewer
+#
 import os
 import zipfile
 import json
@@ -49,17 +52,96 @@ type UUID = string // with UUID v4 format
 
 type SketchPositionString = string // '{0.5, 0.67135115527602085}'
 
-type SketchNestedPositionString = string // '{{0, 0}, {75.5, 15}}'
 
 type Base64String = string
 
 type FilePathString = string
 
-type SketchImageCollection = {
-  _class: 'imageCollection',
-  images: Unknown // TODO
-}
 '''
+
+POINT_PATTERN = re.compile('\{([0-9\.\-]*), ([0-9\.\-]*)\}')
+  # type SketchPositionString = string // '{0.5, 0.67135115527602085}'
+
+class Point:
+  def __init__(p, bcp1=None, bcp2=None):
+    self.p = p # Set by property
+    self.bcp1 = bcp1
+    self.bcp2 = bcp2
+
+  def _get_p(self):
+    return self.x, self.y
+  def _set_p(self, p):
+    self.x, self.y = p
+  p = property(_get_p, _set_p)
+
+  def _get_bcp1(self):
+    bcp = self.bcp1x, self.bcp1y
+    if None in bcp:
+      return None
+    return bcp
+  def _set_bcp1(self, bcp):
+    if bcp is None:
+      bcp = None, None
+    self.bcp1x, self.bcp1y = bcp
+  bcp1 = property(_get_bcp1, _set_bcp1)
+
+  def _get_bcp2(self):
+    bcp = self.bcp2x, self.bcp2y
+    if None in bcp:
+      return None
+    return bcp
+  def _set_bcp2(self, bcp):
+    if bcp is None:
+      bcp = None, None
+    self.bcp2x, self.bcp2y = bcp
+  bcp2 = property(_get_bcp2, _set_bcp2)
+
+def asPoint(self, sketchPoint):
+  """Interpret the {x,y} string into a point2D.
+
+  >>> context = SketchContext()
+  >>> context._SketchPoint2Point('{0, 0}')
+  (0, 0)
+  >>> context._SketchPoint2Point('{0000021, -12345}')
+  (21, -12345)
+  >>> context._SketchPoint2Point('{10.05, -10.66}')
+  (10.05, -10.66)
+  """
+  sx, sy = self.POINT_PATTERN.findall(sketchPoint)[0]
+  return Point((asNumber(sx), asNumber(sy)))
+
+def asCurvePoint(self, sketchCurvePoint):
+  """
+  type SketchCurvePoint = {
+    _class: 'curvePoint',
+    do_objectID: UUID,
+    cornerRadius: number,
+    curveFrom: SketchPositionString,
+    curveMode: number,
+    curveTo: SketchPositionString,
+    hasCurveFrom: bool,
+    hasCurveTo: bool,
+    point: SketchPositionString
+  }
+  """
+  return str(sketchCurvePoint)
+  points = []
+  if sketchCurvePoint['hasCurveFrom']:
+    points.append(self._SketchPoint2Point(sketchCurvePoint['curveFrom']))
+  if sketchCurvePoint['hasCurveTo']:
+    points.append(self._SketchPoint2Point(sketchCurvePoint['curveTo']))
+  points.append(self._SketchPoint2Point(sketchCurvePoint['point']))
+  #print(points, sketchCurvePoint)
+  return Point()
+
+def asRect(sketchNestedPositionString):
+  """
+  type SketchNestedPositionString = string // '{{0, 0}, {75.5, 15}}'
+  """
+  if sketchNestedPositionString is None:
+    return None
+  (x, y), (w, h) = POINT_PATTERN.findall(sketchNestedPositionString)
+  return x, y, w, h
 
 def asColorNumber(v):
   try:
@@ -88,7 +170,33 @@ def asPoint(p):
 def asId(v):
   return v
 
+def asString(v):
+  return str(v)
+
+def asColorList(v):
+  return []
+
+def asGradientList(v):
+  return []
+
+def asImageCollection(v):
+  return []
+
+def asImages(v):
+  return []
+
+def asDict(v):
+  return {}
+
+def asList(v):
+  return list(v)
+
+class SketchAppBase:
+  """Base class for SketchAppReader and SketchAppWriter"""
+
 class SketchBase:
+
+  REPR_ATTRS = ['name'] # Attributes to be show in __repr__
 
   def __init__(self, d):
     if d is None:
@@ -104,8 +212,9 @@ class SketchBase:
 
   def __repr__(self):
     s = ['<%s' % self._class]
-    for attrName in sorted(self.ATTRS):
-      s.append('%s=%s' % (attrName, getattr(self, attrName)))
+    for attrName in self.REPR_ATTRS:
+      if hasattr(self, attrName):
+        s.append('%s=%s' % (attrName, getattr(self, attrName)))
     return ' '.join(s) + '>'
 
   def asDict(self):
@@ -113,6 +222,44 @@ class SketchBase:
     for attrName, (m, default) in self.ATTRS.items():
       d[attrName] = getattr(self, attrName)
     return d
+
+  def asJson(self):
+    d = {}
+    for attrName in self.ATTRS.keys():
+      attr = getattr(self, attrName)
+      if isinstance(attr, (list, tuple)):
+        l = [] 
+        for e in attr:
+          if hasattr(e, 'asJson'):
+            l.append(e.asJson())
+        attr = l
+      elif hasattr(attr, 'asJson'):
+        attr = attr.asJson()
+      if attr is not None:
+        assert isinstance(attr, (dict, int, float, list, tuple, str)), attr
+        d[attrName] = attr
+    if not d:
+      return None
+    d['_class'] = self.CLASS
+    return d
+
+class SketchLayer(SketchBase):
+
+  def __init__(self, d):
+    SketchBase.__init__(self, d)
+    self.layers = [] # List of Sketch element instances.
+    for layer in d.get('layers', []):
+      self.layers.append(SKETCHLAYER_PY[layer['_class']](layer))
+
+class SketchImageCollection(SketchBase):
+  """
+  _class: 'imageCollection',
+  images: Unknown // TODO
+  """
+  CLASS = 'imageCollection'
+  ATTRS = {
+    'images': (asDict, {})
+  }
 
 class SketchColor(SketchBase):
   """
@@ -131,6 +278,7 @@ class SketchColor(SketchBase):
   >>> sorted(color.asDict())
   ['_class', 'alpha', 'blue', 'green', 'red']
   """
+  REPR_ATTRS = ['red', 'green', 'blue', 'alpha'] # Attributes to be show in __repr__
   CLASS = 'color'
   ATTRS = {
     'red': (asColorNumber, 0),
@@ -153,7 +301,7 @@ class SketchBorder(SketchBase):
   >>> test = dict(color=dict(red=1))
   >>> border = SketchBorder(test)
   >>> border.color
-  <color alpha=0 blue=0 green=0 red=1>
+  <color red=1 green=0 blue=0 alpha=0>
   """
   CLASS = 'border'
   ATTRS = {
@@ -173,7 +321,7 @@ class SketchGradientStop(SketchBase):
   >>> test = dict(color=dict(blue=1), position=1) 
   >>> gs = SketchGradientStop(test)
   >>> gs.color, gs.position
-  (<color alpha=0 blue=1 green=0 red=0>, 1)
+  (<color red=0 green=0 blue=1 alpha=0>, 1)
   """
   CLASS = 'gradientStop'
   ATTRS = {
@@ -256,8 +404,10 @@ type SketchBlur = {
   radius: number,
   type: number
 }
+'''
 
-type SketchEncodedAttributes = {
+class SketchEncodedAttributes(SketchBase):
+  """
   NSKern: number,
   MSAttributedStringFontAttribute: {
     _archive: Base64String,
@@ -268,9 +418,9 @@ type SketchEncodedAttributes = {
   NSColor: {
     _archive: Base64String
   }
-}
-
-'''
+  """
+  CLASS = 'sketchEncodedAttributes'
+  ATTRS = {}
 
 class SketchRect:
   """
@@ -282,6 +432,8 @@ class SketchRect:
   y: number
   """
   def __init__(self, d):
+    if d is None:
+      d = dict(x=0, y=0, w=0, h=0)
     self.x = d.get('x', 0)
     self.y = d.get('y', 0)
     self.w = d.get('width', 100)
@@ -289,33 +441,58 @@ class SketchRect:
     self.constrainProportions = d.get('constrainProportions', False)
 
   def __repr__(self):
-    return '<rect x=%s y=%d w=%d h=%d constain=%s>' % (self.x, self.y, self.w, self.h, self.constrainProportions)
+    s = '(x=%s y=%d w=%d h=%d' % (self.x, self.y, self.w, self.h)
+    if self.constrainProportions:
+       s += ' constrain=True'
+    return s + ')'
 
-'''
-type SketchTextStyle = {
+  def asJson(self):
+    return dict(x=self.x, y=self.y, width=self.w, heigh=self.h, constrainProportions=self.constrainProportions)
+
+class SketchTextStyle(SketchBase):
+  """
   _class: 'textStyle',
   encodedAttributes: SketchEncodedAttributes
-}
+  """
+  CLASS = 'textStyle'
+  ATTRS = {
+    'encodedAttributes': (SketchEncodedAttributes, None),
+  }
 
-type SketchBorderOptions = {
+class SketchBorderOptions(SketchBase):
+  """
   _class: 'borderOptions',
   do_objectID: UUID,
   isEnabled: bool,
   dashPattern: [], // TODO,
   lineCapStyle: number,
   lineJoinStyle: number
-}
+  """
+  CLASS = 'borderOptions'
+  ATTRS = {
+    'do_objectID': (asId, 0),
+    'isEnabled': (asBool, True),
+    'dashPattern': (asString, ''),
+    'lineCapStyle': (asNumber, 0),
+    'lineJoinStyle': (asNumber, 0),
+  }
 
-type SketchColorControls = {
+class SketchColorControls(SketchBase):
+  """
   _class: 'colorControls',
   isEnabled: bool,
   brightness: number,
   contrast: number,
   hue: number,
   saturation: number
-}
+  """
+  CLASS = 'colorConstrols'
+  ATTRS = {
 
-type SketchStyle = {
+  }
+
+class SketchStyle(SketchBase):
+  """
   _class: 'style',
   blur: ?[SketchBlur],
   borders: ?[SketchBorder],
@@ -325,21 +502,37 @@ type SketchStyle = {
   endDecorationType: number,
   fills: [SketchFill],
   innerShadows: [SketchInnerShadow],
-  miterLimit: number,
+  + miterLimit: number,
   shadows: ?[SketchShadow],
   sharedObjectID: UUID,
   startDecorationType: number,
   textStyle: ?SketchTextStyle
-}
+  + endMarkerType: number,
+  + startMarkerType: number,
+  + windingRule: number,
+  """
+  CLASS = 'style'
+  ATTRS = {
+    'endMarkerType': (asInt, 0),
+    'miterLimit': (asInt, 10),
+    'startMarkerType': (asInt, 0),
+    'windingRule': (asInt, 1)
+  }
 
-type SketchSharedStyle = {
+class SketchSharedStyle(SketchBase):
+  """
   _class: 'sharedStyle',
   do_objectID: UUID,
   name: string,
   value: SketchStyle
-}
+  """
+  CLASS = 'sharedStyle'
+  ATTRS = {
 
-type SketchExportFormat = {
+  }
+
+class SketchExportFormat(SketchBase):
+  """
   _class: 'exportFormat',
   absoluteSize: number,
   fileFormat: string,
@@ -347,53 +540,103 @@ type SketchExportFormat = {
   namingScheme: number,
   scale: number,
   visibleScaleType: number
-}
+  """
+  CLASS = 'exportFormat'
+  ATTRS = {
 
-type SketchExportOptions = {
+  }
+
+class SketchExportOptions(SketchBase):
+  """
   _class: 'exportOptions',
   exportFormats: [SketchExportFormat],
   includedLayerIds: [], // TODO
   layerOptions: number,
   shouldTrim: bool
-}
+  """
+  CLASS = 'exportOptions'
+  ATTRS = {
 
-type SketchSharedStyleContainer = {
+  }
+
+class SketchSharedStyleContainer(SketchBase):
+  """
   _class: 'sharedStyleContainer',
   objects: [SketchSharedStyle]
-}
+  """
+  CLASS = 'sharedStyleContainer'
+  ATTRS = {
+    'objects': (asList, []),
+  }
 
-type SketchSymbolContainer = {
+class SketchSymbolContainer(SketchBase):
+  """
   _class: 'symbolContainer',
   objects: [] // TODO
-}
+  """
+  CLASS = 'symbolContainer'
+  ATTRS = {
+    'objects': (asList, []),
+  }
 
-type SketchSharedTextStyleContainer {
+class SketchSharedTextStyleContainer(SketchBase):
+  """
   _class: 'sharedTextStyleContainer',
   objects: [SketchSharedStyle]
-}
+  """
+  CLASS = 'sharedTextStyleContainer'
+  ATTRS = {
+    'objects': (asList, []),
+  }
 
-type SketchAssetsCollection = {
+class SketchAssetsCollection(SketchBase):
+  """
   _class: 'assetCollection',
   colors: [], // TODO
   gradients: [], // TODO
   imageCollection: SketchImageCollection,
   images: [] // TODO
-}
+  """
+  CLASS = 'assetCollection'
+  ATTRS = {
+    'colors': (asColorList, []),
+    'gradients': (asGradientList, []),
+    'imageCollection': (SketchImageCollection, []),
+    'images': (asImages, []),
+  }
 
-type SketchMSJSONFileReference = {
+def SketchMSJSONFileReferenceList(refs):
+  l = []
+  for ref in refs:
+    l.append(SketchMSJSONFileReference(ref))
+  return l
+
+class SketchMSJSONFileReference(SketchBase):
+  """
   _class: 'MSJSONFileReference',
   _ref_class: 'MSImmutablePage' | 'MSImageData',
-  _red: FilePathString
-}
+  _ref: FilePathString
+  """
+  CLASS = 'MSJSONFileReference'
+  ATTRS = {
+    '_ref_class': (asString, 'MSImmutablePage'),
+    '_ref': (asString, ''),
+  }
 
-type SketchMSAttributedString = {
+class SketchMSAttributedString(SketchBase):
+  """
   _class: 'MSAttributedString',
   archivedAttributedString: {
     _archive: Base64String
   }
-}
+  """
+  CLASS = 'MSAttributedString'
+  ATTRS = {
 
-type SketchCurvePoint = {
+  }
+
+class SketchCurvePoint(SketchBase):
+  """
   _class: 'curvePoint',
   do_objectID: UUID,
   cornerRadius: number,
@@ -403,15 +646,25 @@ type SketchCurvePoint = {
   hasCurveFrom: bool,
   hasCurveTo: bool,
   point: SketchPositionString
-}
+  """
+  CLASS = 'curvePoint'
+  ATTRS = {
 
-type SketchRulerData = {
+  }
+
+class SketchRulerData(SketchBase):
+  """
   _class: 'rulerData',
   base: number,
   guides: [] // TODO
-}
+  """
+  CLASS = 'rulerData'
+  ATTRS = {
 
-type SketchText = {
+  }
+
+class SketchText(SketchBase):
+  """
   _class: 'text',
   do_objectID: UUID,
   exportOptions: SketchExportOptions,
@@ -435,39 +688,69 @@ type SketchText = {
   heightIsClipped: bool,
   lineSpacingBehaviour: number,
   textBehaviour: number
-}
+  """
+  CLASS = 'text'
+  ATTRS = {
 
-type SketchShapeGroup = {
+  }
+
+class SketchShapeGroup(SketchLayer):
+  """
   _class: 'shapeGroup',
-  do_objectID: UUID,
-  exportOptions: SketchExportOptions,
-  frame: SketchRect,
-  isFlippedVertical: bool,
-  isFlippedHorizontal: bool,
-  isLocked: bool,
-  isVisible: bool,
-  layerListExpandedType: number,
-  name: string,
-  nameIsFixed: bool,
-  originalObjectID: UUID,
-  resizingType: number,
-  rotation: number,
-  shouldBreakMaskChain: bool,
-  style: SketchStyle,
-  hasClickThrough: bool,
-  layers: [SketchLayer],
+  + do_objectID: UUID,
+  + exportOptions: SketchExportOptions,
+  + frame: SketchRect,
+  + isFlippedVertical: bool,
+  + isFlippedHorizontal: bool,
+  + isLocked: bool,
+  + isVisible: bool,
+  + layerListExpandedType: number,
+  + name: string,
+  + nameIsFixed: bool,
+  + originalObjectID: UUID,
+  + resizingType: number,
+  + rotation: number,
+  + shouldBreakMaskChain: bool,
+  + style: SketchStyle,
+  + hasClickThrough: bool,
+  # layers: [SketchLayer],
   clippingMaskMode: number,
   hasClippingMask: bool,
   windingRule: number
-}
+  """
+  CLASS = 'shapeGroup'
+  ATTRS = {
+    'do_objectID': (asId, 0),
+    'exportOptions': (SketchExportOptions, None),
+    'frame': (SketchRect, None),
+    'isFlippedVertical': (asBool, False),
+    'isFlippedHorizontal': (asBool, False),
+    'isLocked': (asBool, False),
+    'isVisible': (asBool, True),
+    'layerListExpandedType': (asInt, 0),
+    'name': (asString, ''),
+    'nameIsFixed': (asBool, False),
+    'originalObjectID': (asId, None),
+    'resizingType': (asInt, 0),
+    'rotation': (asNumber, 0),
+    'shouldBreakMaskChain': (asBool, False),
+    'style': (SketchStyle, None),
+    'hasClickThrough': (asBool, False),
+  }
 
-type SketchPath = {
+class SketchPath(SketchBase):
+  """
   _class: 'path',
   isClosed: bool,
   points: [SketchCurvePoint]
-}
+  """
+  CLASS = 'path'
+  ATTRS = {
 
-type SketchShapePath = {
+  }
+
+class SketchShapePath(SketchBase):
+  """
   _class: 'shapePath',
   do_objectID: UUID,
   exportOptions: SketchExportOptions,
@@ -485,39 +768,81 @@ type SketchShapePath = {
   booleanOperation: number,
   edited: bool,
   path: SketchPath
-}
+  """
+  CLASS = 'shapePath'
+  ATTRS = {
+    'do_objectID': (asId, 0),
+    'exportOptions': (SketchExportOptions, None),
+    'frame': (SketchRect, None),
+    'isFlippedHorizontal': (asBool, False),
+    'isLocked': (asBool, False),
+    'isVisible': (asBool, True),
+    'layerListExpandedType': (asInt, 0),
+    'name': (asString, ''),
+    'nameIsFixed': (asBool, False),
+    'name': (asString, ''),
+    'nameIsFixed': (asBool, False),
+  }
 
-type SketchArtboard = {
+class SketchArtboard(SketchLayer):
+  """
   _class: 'artboard',
-  do_objectID: UUID,
-  exportOptions: SketchExportOptions,
-  frame: SketchRect,
-  isFlippedHorizontal: bool,
-  isFlippedVertical: bool,
-  isLocked: bool,
-  isVisible: bool,
-  layerListExpandedType: number,
-  name: string,
-  nameIsFixed: bool,
-  resizingType: number,
-  rotation: number,
-  shouldBreakMaskChain: bool,
-  style: SketchStyle,
-  hasClickThrough: bool,
-  layers: [SketchLayer],
-  backgroundColor: SketchColor,
-  hasBackgroundColor: bool,
-  horizontalRulerData: SketchRulerData,
-  includeBackgroundColorInExport: bool,
-  includeInCloudUpload: bool,
-  verticalRulerData: SketchRulerData
-}
+  + do_objectID: UUID,
+  + exportOptions: SketchExportOptions,
+  + frame: SketchRect,
+  + isFlippedHorizontal: bool,
+  + isFlippedVertical: bool,
+  + isLocked: bool,
+  + isVisible: bool,
+  + layerListExpandedType: number,
+  + name: string,
+  + nameIsFixed: bool,
+  + resizingType: number,
+  + rotation: number,
+  + shouldBreakMaskChain: bool,
+  + style: SketchStyle,
+  + hasClickThrough: bool,
+  # layers: [SketchLayer],
+  + backgroundColor: SketchColor,
+  + hasBackgroundColor: bool,
+  + horizontalRulerData: SketchRulerData,
+  + includeBackgroundColorInExport: bool,
+  + includeInCloudUpload: bool,
+  + verticalRulerData: SketchRulerData
+  """
+  REPR_ATTRS = ['name', 'frame'] # Attributes to be show in __repr__
+  CLASS = 'artboard'
+  ATTRS = {
+    'do_objectID': (asId, 0),
+    'exportOptions': (SketchExportOptions, None),
+    'frame': (SketchRect, None),
+    'isFlippedHorizontal': (asBool, False),
+    'isFlippedVertical': (asBool, False),
+    'isLocked': (asBool, False),
+    'isVisible': (asBool, True),
+    'layerListExpandedType': (asInt, 0),
+    'name': (asString, 'Artboard'),
+    'nameIsFixed': (asBool, False),
+    'resizingType': (asInt, 0),
+    'rotation': (asNumber, 0),
+    'shouldBreakMaskChain': (asBool, False),
+    'style': (SketchStyle, None),
+    'hasClickThrough': (asBool, False),
+    'backgroundColor': (SketchColor, None),
+    'hasBackgroundColor': (asBool, False),
+    'horizontalRulerData': (SketchRulerData, None),
+    'verticalRulerData': (SketchRulerData, None),
+    'includeBackgroundColorInExport': (asBool, False),
+    'includeInCloudUpload': (asBool, True),
+    'layers': (asList, []),
+  }
 
-type SketchBitmap = {
+class SketchBitmap(SketchBase):
+  """
   _class: 'bitmap',
-  do_objectID: UUID,
-  exportOptions: SketchExportOptions,
-  frame: SketchRect,
+  + do_objectID: UUID,
+  + exportOptions: SketchExportOptions,
+  + frame: SketchRect,
   isFlippedHorizontal: bool,
   isFlippedVertical: bool,
   isLocked: bool,
@@ -534,9 +859,32 @@ type SketchBitmap = {
   image: SketchMSJSONFileReference,
   nineSliceCenterRect: SketchNestedPositionString,
   nineSliceScale: SketchPositionString
-}
+  """
+  CLASS = 'bitmap'
+  ATTRS = {
+    'do_objectID': (asId, 0),
+    'exportOptions': (SketchExportOptions, None),
+    'frame': (SketchRect, None),
+    'isFlippedHorizontal': (asBool, False),
+    'isFlippedVertical': (asBool, False),
+    'isLocked': (asBool, False),
+    'isVisible': (asBool, True),
+    'layerListExpandedType': (asInt, 0),
+    'name': (asString, ''),
+    'nameIsFixed': (asBool, False),
+    'resizingType': (asInt, 0),
+    'rotation': (asNumber, 0),
+    'shouldBreakMaskChain': (asBool, False),
+    'style': (SketchStyle, None),
+    'clippingMask': (asRect, None),
+    'fillReplacesImage': (asBool, False),
+    'image': (asString, ''),
+    'nineSliceCenterRect': (asRect, None),
+    'nineSliceScale': (asRect, None)
+  }
 
-type SketchSymbolInstance = {
+class SketchSymbolInstance(SketchBase):
+  """
   _class: 'symbolInstance',
   do_objectID: UUID,
   exportOptions: SketchExportOptions,
@@ -562,9 +910,14 @@ type SketchSymbolInstance = {
   overrides: {
     "0": {} // TODO
   }
-}
+  """
+  CLASS = 'symbolInstance'
+  ATTRS = {
 
-type SketchGroup = {
+  }
+
+class SketchGroup(SketchLayer):
+  """
   _class: 'group',
   do_objectID: UUID,
   exportOptions: SketchExportOptions,
@@ -581,10 +934,15 @@ type SketchGroup = {
   rotation: number,
   shouldBreakMaskChain: bool,
   hasClickThrough: bool,
-  layers: [SketchLayer]
-}
+  # layers: [SketchLayer]
+  """
+  CLASS = 'group'
+  ATTRS = {
 
-type SketchRectangle = {
+  }
+
+class SketchRectangle(SketchBase):
+  """
   _class: 'rectangle',
   do_objectID: UUID,
   exportOptions: SketchExportOptions,
@@ -604,9 +962,14 @@ type SketchRectangle = {
   path: SketchPath,
   fixedRadius: number,
   hasConvertedToNewRoundCorners: bool
-}
+  """
+  CLASS = 'rectangle'
+  ATTRS = {
 
-type SketchOval = {
+  }
+
+class SketchOval(SketchBase):
+  """
   _class: 'oval',
   do_objectID: UUID,
   exportOptions: SketchExportOptions,
@@ -624,19 +987,26 @@ type SketchOval = {
   booleanOperation: number,
   edited: bool,
   path: SketchPath  
+  """
+  CLASS = 'oval'
+  ATTRS = {
+
+  }
+
+# Conversion of Sketch layer class name to Python class.
+SKETCHLAYER_PY = {
+  'text': SketchText,
+  'shapeGroup': SketchShapeGroup,
+  'shapePath': SketchShapePath,
+  'bitmap': SketchBitmap,
+  'artboard': SketchArtboard,
+  'symbolInstance': SketchSymbolInstance,
+  'group': SketchGroup,
+  'rectangle': SketchRectangle,
+  'oval': SketchOval,
 }
 
-type SketchLayer =
-  | SketchText
-  | SketchShapeGroup
-  | SketchShapePath
-  | SketchBitmap
-  | SketchArtboard
-  | SketchSymbolInstance
-  | SketchGroup
-  | SketchRectangle
-  | SketchOval
-
+'''
 type SketchSymbolMaster = {
   backgroundColor: SketchColor,
   _class: 'symbolMaster',
@@ -654,7 +1024,7 @@ type SketchSymbolMaster = {
   isLocked: bool,
   isVisible: bool,
   layerListExpandedType: number,
-  layers: [SketchLayer],
+  layers: SketchLayerList,
   name: string,
   nameIsFixed: bool,
   resizingType: number,
@@ -669,71 +1039,118 @@ type SketchSymbolMaster = {
 class SketchDocument(SketchBase):
   """
   _class: 'document',
-  do_objectID: UUID,
-  assets: SketchAssetsCollection,
-  currentPageIndex: number,
-  enableLayerInteraction: bool,
-  enableSliceInteraction: bool,
+  + do_objectID: UUID,
+  + assets: SketchAssetsCollection,
+  + colorSpace: number,
+  + currentPageIndex: number,
+  + enableLayerInteraction: bool,
+  + enableSliceInteraction: bool,
   foreignSymbols: [], // TODO
-  layerStyles: SketchSharedStyleContainer,
-  layerSymbols: SketchSymbolContainer,
-  layerTextStyles: SketchSharedTextStyleContainer,
-  pages: [SketchMSJSONFileReference]
-  
-
+  + layerStyles: SketchSharedStyleContainer,
+  + layerSymbols: SketchSymbolContainer,
+  + layerTextStyles: SketchSharedTextStyleContainer,
+  + pages: SketchMSJSONFileReferenceList,
   """
   CLASS = 'document'
   ATTRS = {
     'do_objectID': (asId, 0),
-    #assets: SketchAssetsCollection,
+    'assets': (SketchAssetsCollection, []),
+    'colorSpace': (asInt, 0),
     'currentPageIndex': (asInt, 0),
     'enableLayerInteraction': (asBool, False),
     'enableSliceInteraction': (asBool, False),
-    #foreignSymbols: [], // TODO
-    #'layerStyles: SketchSharedStyleContainer,
-    #'layerSymbols: SketchSymbolContainer,
-    #'layerTextStyles: SketchSharedTextStyleContainer,
-    #'pages: [SketchMSJSONFileReference]
+    'foreignLayerStyles': (asList, []),
+    'foreignSymbols': (asList, []),
+    'foreignTextStyles': (asList, []),
+    'layerStyles': (SketchSharedStyleContainer, {}),
+    'layerSymbols': (SketchSymbolContainer, {}),
+    'layerTextStyles': (SketchSharedTextStyleContainer, {}),
+    'pages': (SketchMSJSONFileReferenceList, []),
   }
-  def __init__(self, d):
-    SketchBase.__init__(self, d)
-    self.pages = [] # List of SketchPage instances, filled by Pages JSON.
 
 # pages/*.json
-class SketchPage(SketchBase):
+class SketchPage(SketchLayer):
   """
   _class: 'page',
   do_objectID: UUID,
-  exportOptions: SketchExportOptions,
-  frame: SketchRect,
-  hasClickThrough: bool,
-  horizontalRulerData: SketchRulerData,
-  includeInCloudUpload: bool,
-  isFlippedHorizontal: bool,
-  isFlippedVertical: bool,
+  + booleanOperation: number, 
+  + exportOptions: SketchExportOptions,
+  + frame: SketchRect,
+  + hasClickThrough: bool,
+  + horizontalRulerData: SketchRulerData,
+  + includeInCloudUpload: bool,
+  + isFlippedHorizontal: bool,
+  + isFlippedVertical: bool,
   + isLocked: bool,
   + isVisible: bool,
-  layerListExpandedType: number,
-  layers: [SketchSymbolMaster],
+  + layerListExpandedType: number,
+  # layers: [SketchSymbolMaster],
   + name: string,
-  nameIsFixed: bool,
-  resizingType: number,
-  rotation: number,
-  shouldBreakMaskChain: bool,
-  style: SketchStyle,
-  verticalRulerData: SketchRulerData
+  + nameIsFixed: bool,
+  + resizingType: number,
+  + rotation: number,
+  + shouldBreakMaskChain: bool,
+  + style: SketchStyle,
+  + verticalRulerData: SketchRulerData
+  + userInfo: {}
 }
   """
   CLASS = 'page'
   ATTRS = {
     'do_objectID': (asId, 0),    
-    'frame': (SketchRect, (0, 0, 100, 100)),
+    'booleanOperation': (asInt, -1),
+    'frame': (SketchRect, None),
+    'hasClickThrough': (asBool, True),
+    'includeInCloudUpload': (asBool, False),
+    'isFlippedHorizontal': (asBool, False),
+    'isFlippedVertical': (asBool, False),
     'isLocked': (asBool, False),
     'isVisible': (asBool, True),
+    'layerListExpandedType': (asInt, 0),
+    'name': (asString, 'Untitled'),
+    'nameIsFixed': (asBool, False),
+    'resizingType': (asInt, 0),
+    'rotation': (asNumber, 0),
+    'shouldBreakMaskChain': (asBool, False),
+    'style': (SketchStyle, None),
+    'verticalRulerData': (SketchRulerData, None),
+    'horizontalRulerData': (SketchRulerData, None),
+    'userInfo': (asDict, {}),
   }
-'''
-// meta.json
-type SketchMeta = {
+  def asJson(self):
+    d = {}
+    for attrName in self.ATTRS.keys():
+      attr = getattr(self, attrName)
+      if isinstance(attr, (list, tuple)):
+        l = [] 
+        for e in attr:
+          if hasattr(e, 'asJson'):
+            l.append(e.asJson())
+        attr = l
+      elif hasattr(attr, 'asJson'):
+        attr = attr.asJson()
+      if attr is not None:
+        assert isinstance(attr, (dict, int, float, list, tuple, str)), attr
+        d[attrName] = attr
+    if not d:
+      return None
+    d['_class'] = self.CLASS
+    d['layers'] = []
+    return d
+
+class SketchFile:
+  def __init__(self):
+    self.pages = {}
+    self.document = None
+    self.user = None 
+    self.meta = None
+
+  def __repr__(self):
+    return '<sketchFile>'   
+
+# meta.json
+class SketchMeta(SketchBase):
+  """
   commit: string,
   appVersion: string,
   build: number,
@@ -746,14 +1163,17 @@ type SketchMeta = {
   saveHistory: [ string ], // 'BETA.38916'
   autosaved: number,
   variant: string // 'BETA'
-}
+  """
+  CLASS = 'meta'
+  ATTRS = {
+    'commit': (asString, ''),
+    'appVersion': (asString, ''),
+    'build': (asNumber, 0),
+  }
 
-type SketchDocumentId = UUID
-
-type SketchPageId = UUID
-
-// user.json
-type SketchUser = {
+# user.json
+class SketchUser(SketchBase):
+  """
   [key: SketchPageId]: {
     scrollOrigin: SketchPositionString,
     zoomValue: number
@@ -762,9 +1182,16 @@ type SketchUser = {
     pageListHeight: number,
     cloudShare: Unknown // TODO
   }
-}
+  """
+  CLASS = 'user'
+  ATTRS = {
+  }
+  def __init__(self, d):
+    SketchBase.__init__(self, d)
+    self.document = dict(pageListHeight=118)
 
-'''
+  def asJson(self):
+    return dict(document=dict(pageListHeight=self.document['pageListHeight']))
 
 if __name__ == '__main__':
   import doctest
