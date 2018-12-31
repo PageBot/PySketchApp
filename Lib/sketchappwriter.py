@@ -51,15 +51,6 @@ class SketchAppWriter(SketchAppBase):
     zf.write(tmpPath, arcname=DOCUMENT_JSON)
     os.remove(tmpPath)
 
-    tmpPath = '/tmp/'+META_JSON
-    f = open(tmpPath, 'w')
-    d = sketchFile.meta.asJson()
-    ds = json.dumps(d)
-    f.write(ds)
-    f.close()
-    zf.write(tmpPath, arcname=META_JSON)
-    os.remove(tmpPath)
-
     tmpPath = '/tmp/'+USER_JSON
     f = open(tmpPath, 'w')
     d = sketchFile.user.asJson()
@@ -68,6 +59,15 @@ class SketchAppWriter(SketchAppBase):
     f.close()
     zf.write(tmpPath, arcname=USER_JSON)
     #os.remove(tmpPath)
+
+    tmpPath = '/tmp/'+META_JSON
+    f = open(tmpPath, 'w')
+    d = sketchFile.meta.asJson()
+    ds = json.dumps(d)
+    f.write(ds)
+    f.close()
+    zf.write(tmpPath, arcname=META_JSON)
+    os.remove(tmpPath)
 
     for pageId, page in sorted(sketchFile.pages.items()):
       tmpPath = '/tmp/pages_'+pageId+'.json'
@@ -79,6 +79,13 @@ class SketchAppWriter(SketchAppBase):
 
       zf.write(tmpPath, arcname='pages/'+pageId+'.json')
       os.remove(tmpPath)
+
+
+    # Recursively find all images in the node tree, so we can reconstruct
+    # the internal file name from external file name (in _images/)
+    imagesPath = sketchFile.imagesPath
+    for image in sketchFile.find('bitmap'): # Recursively find all bitmap layers
+      zf.write(imagesPath + image.name + '.png', arcname=image.image._ref)
 
     zf.close()
 

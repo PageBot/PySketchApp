@@ -19,21 +19,6 @@ from classes import *
 
 class SketchAppReader(SketchAppBase):
 
-  def __init__(self, overwriteImages=False):
-    self.overwriteImages = overwriteImages
-    # Key is SketchBitmap.do_objectID, value is path of exported image file.
-    self.imagesId2Path = {} 
-
-  def makeImagesDirectory(self, path):
-    """Construct the directory name to store images. Create the directory if it does not exist.
-    aPath/fileName.sketch --> aPath/fileName_images/
-    Answer the newly constructed image path.
-    """
-    exportImagesPath = '/'.join(path.split('/')[:-1]) + '/' + '.'.join(path.split('.')[:-1]) + '_images/' 
-    if not os.path.exists(exportImagesPath):
-      os.makedirs(exportImagesPath)
-    return exportImagesPath
-
   def read(self, path):
     """Read a sketch file and answer a SketchDocument that contains the interpreted data.
 
@@ -59,9 +44,15 @@ class SketchAppReader(SketchAppBase):
 
     assert path.endswith('.'+FILETYPE_SKETCH)
     fileName = path.split('/')[-1] # Use file name as document name and storage of images
-    imagesPath = self.makeImagesDirectory(path) # Make the sketchName_images/ directory if it does not exist.
 
-    skf = SketchFile()
+    skf = SketchFile(path)
+
+    # Construct the directory name to store images. Create the directory if it does not exist.
+    # aPath/fileName.sketch --> aPath/fileName_images/
+    # Answer the newly constructed image path.
+    imagesPath = skf.imagesPath 
+    if not os.path.exists(imagesPath):
+      os.makedirs(imagesPath)
 
     zf = zipfile.ZipFile(path, mode='r') # Open the file.sketch as Zip.
     zipInfo = zf.NameToInfo
@@ -95,24 +86,30 @@ class SketchAppReader(SketchAppBase):
         sketchPage = SketchPage(sketchPageInfo)
         skf.pages[sketchPage['do_objectID']] = sketchPage
 
-    # Now scan images and save them as file in _images, preferrably with their original name.
-    # If the image already exists and self.overWriteImages is False, then keep the saved file.
-    for key in zipInfo:
-      if key.startswith(IMAGES_JSON): # This must be an image
-        imageBinary = zf.read(key)
-        # If the image cannot be found by key, then use BitMap id as used in the file.
-        imageFileName = self.imagesId2Path.get(key, key.split('/')[-1])
-        # Export the image as separate file in _images directory.
-        fbm = open(imagesPath + imageFileName, 'wb')
-        fbm.write(imageBinary)
-        fbm.close()
+    # Find all imaes used in the file tree, so we can save them with their layer name.
+    # Note that for now this is not a safe method, in case there are layers with
+    # the same name in the document that refer to different bitmap files.
+    # Also not that renaming the files in the _images/ folder, will disconnect them
+    # from placements by bitmap layers.
+    # TODO: Solve this later, creating unique file names.
+    for image in skf.find('bitmap'): # Recursively find all bitmap layers.
+      imageBinary = zf.read(image.image._ref)
+      # If the image cannot be found by key, then use BitMap id as used in the file.
+      # Export the image as separate file in _images directory.
+      fbm = open(imagesPath + image.name + '.png', 'wb')
+      fbm.write(imageBinary)
+      fbm.close()
 
-    '''
-      elif infoName.startswith(PREVIEWS_JSON):
-        doc.previews.append(SketchPreview(fc))
-      else:
-        print('Unknown info name', infoName)
-    '''
+    # Save any previews in the _images/ directory too.
+    # Note that there may be an potential naming conflict here, in case a layer is called 
+    # "preview". TODO: To be solved later.
+    for key in zipInfo:
+      if key.startswith(PREVIEWS_JSON): # This is a preview image
+        previewBinary = zf.read(key)
+        fp = open(imagesPath + key.split('/')[-1], 'wb')
+        fp.write(previewBinary)
+        fp.close()
+
     return skf
 
 

@@ -36,14 +36,20 @@ import zipfile
 import json
 import re
 import io
+import weakref
 
 FILETYPE_SKETCH = 'sketch' # SketchApp file extension
+UNTITLED_SKETCH = 'untitled.' + FILETYPE_SKETCH # Name for untitled SketchFile.path
+IMAGES_PATH = '_images/' # Path extension for image cache directory
 DOCUMENT_JSON = 'document.json'
 USER_JSON = 'user.json'
 META_JSON = 'meta.json'
 PAGES_JSON = 'pages/'
 IMAGES_JSON = 'images/'
-PREVIEWS_JSON = 'previews/'
+PREVIEWS_PATH = 'previews/' # Internal path for preview images
+
+BASE_FRAME = dict(x=0, y=0, width=1, height=1)
+POINT_ORIGIN = '{0, 0}'
 
 # SketchApp 43 files JSON types
 
@@ -63,76 +69,25 @@ POINT_PATTERN = re.compile('\{([0-9\.\-]*), ([0-9\.\-]*)\}')
   # type SketchPositionString = string // '{0.5, 0.67135115527602085}'
 
 class Point:
-  def __init__(p, bcp1=None, bcp2=None):
-    self.p = p # Set by property
-    self.bcp1 = bcp1
-    self.bcp2 = bcp2
-
-  def _get_p(self):
-    return self.x, self.y
-  def _set_p(self, p):
-    self.x, self.y = p
-  p = property(_get_p, _set_p)
-
-  def _get_bcp1(self):
-    bcp = self.bcp1x, self.bcp1y
-    if None in bcp:
-      return None
-    return bcp
-  def _set_bcp1(self, bcp):
-    if bcp is None:
-      bcp = None, None
-    self.bcp1x, self.bcp1y = bcp
-  bcp1 = property(_get_bcp1, _set_bcp1)
-
-  def _get_bcp2(self):
-    bcp = self.bcp2x, self.bcp2y
-    if None in bcp:
-      return None
-    return bcp
-  def _set_bcp2(self, bcp):
-    if bcp is None:
-      bcp = None, None
-    self.bcp2x, self.bcp2y = bcp
-  bcp2 = property(_get_bcp2, _set_bcp2)
-
-def asPoint(self, sketchPoint):
   """Interpret the {x,y} string into a point2D.
 
-  >>> context = SketchContext()
-  >>> context._SketchPoint2Point('{0, 0}')
-  (0, 0)
-  >>> context._SketchPoint2Point('{0000021, -12345}')
-  (21, -12345)
-  >>> context._SketchPoint2Point('{10.05, -10.66}')
-  (10.05, -10.66)
+  >>> Point('{0, 0}')
+  <point x=0.0 y=0.0>
+  >>> Point('{0000021, -12345}')
+  <point x=21.0 y=-12345.0>
+  >>> Point('{10.05, -10.66}')
+  <point x=10.05 y=-10.66>
   """
-  sx, sy = self.POINT_PATTERN.findall(sketchPoint)[0]
-  return Point((asNumber(sx), asNumber(sy)))
+  def __init__(self, sketchPoint):
+    sx, sy = POINT_PATTERN.findall(sketchPoint)[0]
+    self.x = asNumber(sx)
+    self.y = asNumber(sy)
 
-def asCurvePoint(self, sketchCurvePoint):
-  """
-  type SketchCurvePoint = {
-    _class: 'curvePoint',
-    do_objectID: UUID,
-    cornerRadius: number,
-    curveFrom: SketchPositionString,
-    curveMode: number,
-    curveTo: SketchPositionString,
-    hasCurveFrom: bool,
-    hasCurveTo: bool,
-    point: SketchPositionString
-  }
-  """
-  return str(sketchCurvePoint)
-  points = []
-  if sketchCurvePoint['hasCurveFrom']:
-    points.append(self._SketchPoint2Point(sketchCurvePoint['curveFrom']))
-  if sketchCurvePoint['hasCurveTo']:
-    points.append(self._SketchPoint2Point(sketchCurvePoint['curveTo']))
-  points.append(self._SketchPoint2Point(sketchCurvePoint['point']))
-  #print(points, sketchCurvePoint)
-  return Point()
+  def __repr__(self):
+    return '<point x=%s y=%s>' % (self.x, self.y)
+
+  def asJson(self):
+    return '{%s, %s}' % (self.x, self.y)
 
 def asRect(sketchNestedPositionString):
   """
@@ -194,6 +149,15 @@ def asList(v):
 class SketchAppBase:
   """Base class for SketchAppReader and SketchAppWriter"""
 
+  def __init__(self, overwriteImages=False):
+    self.overwriteImages = overwriteImages
+
+  def _get_parent(self):
+    return self._parent() # Get weakref to parent node
+  def _set_parent(self, parent):
+    self._parent = weakref.ref(parent)
+  parent = property(_get_parent, _set_parent)
+
 class SketchBase:
 
   REPR_ATTRS = ['name'] # Attributes to be show in __repr__
@@ -243,6 +207,47 @@ class SketchBase:
     d['_class'] = self.CLASS
     return d
 
+  def find(self, nodeType, found=None):
+    if found is None:
+      found = []
+    if self._class == nodeType:
+      found.append(self)
+    if hasattr(self, 'layers'):
+      for layer in self.layers:
+        layer.find(nodeType, found)
+    return found
+
+def SketchCurvePointList(curvePointList):
+  l = []
+  for curvePoint in curvePointList:
+    l.append(SketchCurvePoint(curvePoint))
+  return l
+
+class SketchCurvePoint(SketchBase):
+  """
+  type SketchCurvePoint = {
+    _class: 'curvePoint',
+    do_objectID: UUID,
+    cornerRadius: number,
+    curveFrom: SketchPositionString, --> Point
+    curveMode: number,
+    curveTo: SketchPositionString, --> Point
+    hasCurveFrom: bool,
+    hasCurveTo: bool,
+    point: SketchPositionString --> Point
+  """
+  CLASS = 'curvePoint'
+  ATTRS = {
+    'do_objectID': (asId, None),
+    'cornerRadius': (asNumber, 0),
+    'curveFrom': (Point, POINT_ORIGIN),
+    'curveMode': (asInt, 1),
+    'curveTo': (Point, POINT_ORIGIN),
+    'hasCurveFrom': (asBool, False),
+    'hasCurveTo': (asBool, False),
+    'point': (Point, POINT_ORIGIN),
+  }
+
 class SketchLayer(SketchBase):
 
   def __init__(self, d):
@@ -250,6 +255,13 @@ class SketchLayer(SketchBase):
     self.layers = [] # List of Sketch element instances.
     for layer in d.get('layers', []):
       self.layers.append(SKETCHLAYER_PY[layer['_class']](layer))
+
+  def asJson(self):
+    d = SketchBase.asJson(self)
+    d['layers'] = layers = []
+    for layer in self.layers:
+      layers.append(layer.asJson())
+    return d
 
 class SketchImageCollection(SketchBase):
   """
@@ -264,6 +276,7 @@ class SketchImageCollection(SketchBase):
 class SketchColor(SketchBase):
   """
   _class: 'color',
+  do_objectID: UUID,
   alpha: number,
   blue: number,
   green: number,
@@ -276,11 +289,12 @@ class SketchColor(SketchBase):
   >>> color.red
   0.5
   >>> sorted(color.asDict())
-  ['_class', 'alpha', 'blue', 'green', 'red']
+  ['_class', 'alpha', 'blue', 'do_objectID', 'green', 'red']
   """
   REPR_ATTRS = ['red', 'green', 'blue', 'alpha'] # Attributes to be show in __repr__
   CLASS = 'color'
   ATTRS = {
+    'do_objectID': (asId, None),
     'red': (asColorNumber, 0),
     'green': (asColorNumber, 0),
     'blue': (asColorNumber, 0),
@@ -310,6 +324,37 @@ class SketchBorder(SketchBase):
     'fillType': (asNumber, 0),
     'position': (asInt, 0),
     'thickness': (asNumber, 1)
+  }
+
+class LayoutGrid(SketchBase):
+  """
+  + isEnabled: bool,
+  + columnWidth: number,
+  + drawHorizontal: bool,
+  + drawHorizontalLines: bool,
+  + drawVertical: bool,
+  + gutterHeight: number,
+  + gutterWidth: number,
+  + guttersOutside: bool,
+  + horizontalOffset: number,
+  + numberOfColumns: number,
+  + rowHeightMultiplication: number,
+  + totalWidth: number,
+  """
+  CLASS = 'layoutGrid'
+  ATTRS = {
+    'isEnabled': (asBool, True),
+    'columnWidth': (asNumber, 96),
+    'drawHorizontal': (asBool, True),
+    'drawHorizontalLines': (asBool, False),
+    'drawVertical': (asBool, True),
+    'gutterHeight': (asNumber, 24),
+    'gutterWidth': (asNumber, 24),
+    'guttersOutside': (asBool, False),
+    'horizontalOffset': (asNumber, 60),
+    'numberOfColumns': (asNumber, 5),
+    'rowHeightMultiplication': (asNumber, 3),
+    'totalWidth': (asNumber, 576),
   }
 
 class SketchGradientStop(SketchBase):
@@ -425,15 +470,17 @@ class SketchEncodedAttributes(SketchBase):
 class SketchRect:
   """
   _class: 'rect',
-  constrainProportions: bool,
-  height: number,
-  width: number,
-  x: number,
-  y: number
+  + do_objectID: UUID,
+  + constrainProportions: bool,
+  + height: number,
+  + width: number,
+  + x: number,
+  + y: number
   """
   def __init__(self, d):
     if d is None:
-      d = dict(x=0, y=0, w=0, h=0)
+      d = dict(x=0, y=0, w=0, h=0, constrainProportions=True)
+    self.do_objectID = d.get('do_objectID')
     self.x = d.get('x', 0)
     self.y = d.get('y', 0)
     self.w = d.get('width', 100)
@@ -447,7 +494,11 @@ class SketchRect:
     return s + ')'
 
   def asJson(self):
-    return dict(x=self.x, y=self.y, width=self.w, heigh=self.h, constrainProportions=self.constrainProportions)
+    d = dict(_class='rect', x=self.x, y=self.y, width=self.w, height=self.h, 
+        constrainProportions=self.constrainProportions)
+    if self.do_objectID is not None:
+      d['do_objectID'] = self.do_objectID
+    return d
 
 class SketchTextStyle(SketchBase):
   """
@@ -470,7 +521,7 @@ class SketchBorderOptions(SketchBase):
   """
   CLASS = 'borderOptions'
   ATTRS = {
-    'do_objectID': (asId, 0),
+    'do_objectID': (asId, None),
     'isEnabled': (asBool, True),
     'dashPattern': (asString, ''),
     'lineCapStyle': (asNumber, 0),
@@ -488,12 +539,17 @@ class SketchColorControls(SketchBase):
   """
   CLASS = 'colorConstrols'
   ATTRS = {
-
+    'isEnabled': (asBool, True),
+    'brightness': (asNumber, 1),
+    'contrast': (asNumber, 1),
+    'hue': (asNumber, 1),
+    'saturation': (asNumber, 1),
   }
 
 class SketchStyle(SketchBase):
   """
   _class: 'style',
+  + do_objectID: UUID,
   blur: ?[SketchBlur],
   borders: ?[SketchBorder],
   borderOptions: ?SketchBorderOptions,
@@ -513,6 +569,7 @@ class SketchStyle(SketchBase):
   """
   CLASS = 'style'
   ATTRS = {
+    'do_objectID': (asId, None),
     'endMarkerType': (asInt, 0),
     'miterLimit': (asInt, 10),
     'startMarkerType': (asInt, 0),
@@ -528,8 +585,16 @@ class SketchSharedStyle(SketchBase):
   """
   CLASS = 'sharedStyle'
   ATTRS = {
-
+    'do_objectID': (asId, None),
+    'name': (asString, 'Untitled'),
+    'value': (SketchStyle, None),
   }
+
+def SketchExportFormatList(exporFormats):
+  l = []
+  for exportFormat in exporFormats:
+    l.append(SketchExportFormat(exportFormat))
+  return l
 
 class SketchExportFormat(SketchBase):
   """
@@ -543,20 +608,30 @@ class SketchExportFormat(SketchBase):
   """
   CLASS = 'exportFormat'
   ATTRS = {
-
+    'absoluteSize': (asNumber, 1),
+    'fileFormat': (asString, ''),
+    'name': (asString, ''),
+    'namingSchema': (asNumber, 0),
+    'scale': (asNumber, 1),
+    'visibleScaleType': (asNumber, 0),
   }
 
 class SketchExportOptions(SketchBase):
   """
   _class: 'exportOptions',
-  exportFormats: [SketchExportFormat],
-  includedLayerIds: [], // TODO
-  layerOptions: number,
-  shouldTrim: bool
+  + do_objectID: UUID,
+  + exportFormats: [SketchExportFormat],
+  + includedLayerIds: [], // TODO
+  + layerOptions: number,
+  + shouldTrim: bool
   """
   CLASS = 'exportOptions'
   ATTRS = {
-
+    'do_objectID': (asId, None),
+    'exportFormats': (SketchExportFormatList, []),
+    'layerOptions': (asInt, 0),
+    'includedLayerIds': (asList, []),
+    'shouldTrim': (asBool, False),
   }
 
 class SketchSharedStyleContainer(SketchBase):
@@ -619,7 +694,7 @@ class SketchMSJSONFileReference(SketchBase):
   """
   CLASS = 'MSJSONFileReference'
   ATTRS = {
-    '_ref_class': (asString, 'MSImmutablePage'),
+    '_ref_class': (asString, 'MSImageData'),
     '_ref': (asString, ''),
   }
 
@@ -635,32 +710,18 @@ class SketchMSAttributedString(SketchBase):
 
   }
 
-class SketchCurvePoint(SketchBase):
-  """
-  _class: 'curvePoint',
-  do_objectID: UUID,
-  cornerRadius: number,
-  curveFrom: SketchPositionString,
-  curveMode: number,
-  curveTo: SketchPositionString,
-  hasCurveFrom: bool,
-  hasCurveTo: bool,
-  point: SketchPositionString
-  """
-  CLASS = 'curvePoint'
-  ATTRS = {
-
-  }
-
 class SketchRulerData(SketchBase):
   """
   _class: 'rulerData',
-  base: number,
-  guides: [] // TODO
+  + do_objectID: UUID,
+  + base: number,
+  + guides: [] // TODO
   """
   CLASS = 'rulerData'
   ATTRS = {
-
+    'do_objectID': (asId, None),
+    'base': (asInt, 0),
+    'guides': (asList, []),
   }
 
 class SketchText(SketchBase):
@@ -698,6 +759,7 @@ class SketchShapeGroup(SketchLayer):
   """
   _class: 'shapeGroup',
   + do_objectID: UUID,
+  + booleanOperation: number,
   + exportOptions: SketchExportOptions,
   + frame: SketchRect,
   + isFlippedVertical: bool,
@@ -708,6 +770,7 @@ class SketchShapeGroup(SketchLayer):
   + name: string,
   + nameIsFixed: bool,
   + originalObjectID: UUID,
+  + isFixedToViewport: bool,
   + resizingType: number,
   + rotation: number,
   + shouldBreakMaskChain: bool,
@@ -720,15 +783,17 @@ class SketchShapeGroup(SketchLayer):
   """
   CLASS = 'shapeGroup'
   ATTRS = {
-    'do_objectID': (asId, 0),
+    'do_objectID': (asId, None),
+    'booleanOperation': (asNumber, -1),
     'exportOptions': (SketchExportOptions, None),
-    'frame': (SketchRect, None),
+    'frame': (SketchRect, BASE_FRAME),
     'isFlippedVertical': (asBool, False),
     'isFlippedHorizontal': (asBool, False),
     'isLocked': (asBool, False),
     'isVisible': (asBool, True),
     'layerListExpandedType': (asInt, 0),
     'name': (asString, ''),
+    'isFixedToViewport': (asBool, False),
     'nameIsFixed': (asBool, False),
     'originalObjectID': (asId, None),
     'resizingType': (asInt, 0),
@@ -746,7 +811,8 @@ class SketchPath(SketchBase):
   """
   CLASS = 'path'
   ATTRS = {
-
+    'isClosed': (asBool, False),
+    'points': (SketchCurvePointList, []),
   }
 
 class SketchShapePath(SketchBase):
@@ -771,9 +837,9 @@ class SketchShapePath(SketchBase):
   """
   CLASS = 'shapePath'
   ATTRS = {
-    'do_objectID': (asId, 0),
+    'do_objectID': (asId, None),
     'exportOptions': (SketchExportOptions, None),
-    'frame': (SketchRect, None),
+    'frame': (SketchRect, BASE_FRAME),
     'isFlippedHorizontal': (asBool, False),
     'isLocked': (asBool, False),
     'isVisible': (asBool, True),
@@ -788,8 +854,10 @@ class SketchArtboard(SketchLayer):
   """
   _class: 'artboard',
   + do_objectID: UUID,
+  + booleanOperation: number,
   + exportOptions: SketchExportOptions,
   + frame: SketchRect,
+  + isFixedToViewport: bool,
   + isFlippedHorizontal: bool,
   + isFlippedVertical: bool,
   + isLocked: bool,
@@ -797,6 +865,7 @@ class SketchArtboard(SketchLayer):
   + layerListExpandedType: number,
   + name: string,
   + nameIsFixed: bool,
+  + resizingConstraint: number,
   + resizingType: number,
   + rotation: number,
   + shouldBreakMaskChain: bool,
@@ -806,16 +875,22 @@ class SketchArtboard(SketchLayer):
   + backgroundColor: SketchColor,
   + hasBackgroundColor: bool,
   + horizontalRulerData: SketchRulerData,
+  + verticalRulerData: SketchRulerData,
   + includeBackgroundColorInExport: bool,
   + includeInCloudUpload: bool,
-  + verticalRulerData: SketchRulerData
+  + isFlowHome: (asBool, False),
+  + userInfo: {}
+  + layout: LayoutGrid,
+  + resizesContent: bool,
   """
   REPR_ATTRS = ['name', 'frame'] # Attributes to be show in __repr__
   CLASS = 'artboard'
   ATTRS = {
-    'do_objectID': (asId, 0),
+    'do_objectID': (asId, None),
+    'booleanOperation': (asInt, -1),
     'exportOptions': (SketchExportOptions, None),
-    'frame': (SketchRect, None),
+    'frame': (SketchRect, BASE_FRAME),
+    'isFixedToViewport': (asBool, False),
     'isFlippedHorizontal': (asBool, False),
     'isFlippedVertical': (asBool, False),
     'isLocked': (asBool, False),
@@ -823,6 +898,7 @@ class SketchArtboard(SketchLayer):
     'layerListExpandedType': (asInt, 0),
     'name': (asString, 'Artboard'),
     'nameIsFixed': (asBool, False),
+    'resizingConstraint': (asNumber, 63),
     'resizingType': (asInt, 0),
     'rotation': (asNumber, 0),
     'shouldBreakMaskChain': (asBool, False),
@@ -832,15 +908,20 @@ class SketchArtboard(SketchLayer):
     'hasBackgroundColor': (asBool, False),
     'horizontalRulerData': (SketchRulerData, None),
     'verticalRulerData': (SketchRulerData, None),
+    'isFlowHome': (asBool, False),
     'includeBackgroundColorInExport': (asBool, False),
     'includeInCloudUpload': (asBool, True),
     'layers': (asList, []),
+    'userInfo': (asDict, {}),
+    'layout': (LayoutGrid, None),
+    'resizesContent': (asBool, True),
   }
 
 class SketchBitmap(SketchBase):
   """
   _class: 'bitmap',
   + do_objectID: UUID,
+  + booleanOperation: number,
   + exportOptions: SketchExportOptions,
   + frame: SketchRect,
   isFlippedHorizontal: bool,
@@ -850,6 +931,7 @@ class SketchBitmap(SketchBase):
   layerListExpandedType: number,
   name: string,
   nameIsFixed: bool,
+  resizingConstraint: number,
   resizingType: number,
   rotation: number,
   shouldBreakMaskChain: bool,
@@ -862,15 +944,17 @@ class SketchBitmap(SketchBase):
   """
   CLASS = 'bitmap'
   ATTRS = {
-    'do_objectID': (asId, 0),
+    'do_objectID': (asId, None),
+    'booleanOperation': (asInt, -1),
     'exportOptions': (SketchExportOptions, None),
-    'frame': (SketchRect, None),
+    'frame': (SketchRect, BASE_FRAME),
     'isFlippedHorizontal': (asBool, False),
     'isFlippedVertical': (asBool, False),
     'isLocked': (asBool, False),
     'isVisible': (asBool, True),
     'layerListExpandedType': (asInt, 0),
     'name': (asString, ''),
+    'resizingConstraint': (asNumber, 63),
     'nameIsFixed': (asBool, False),
     'resizingType': (asInt, 0),
     'rotation': (asNumber, 0),
@@ -878,7 +962,7 @@ class SketchBitmap(SketchBase):
     'style': (SketchStyle, None),
     'clippingMask': (asRect, None),
     'fillReplacesImage': (asBool, False),
-    'image': (asString, ''),
+    'image': (SketchMSJSONFileReference, None),
     'nineSliceCenterRect': (asRect, None),
     'nineSliceScale': (asRect, None)
   }
@@ -938,15 +1022,31 @@ class SketchGroup(SketchLayer):
   """
   CLASS = 'group'
   ATTRS = {
-
+    'do_objectID': (asId, None),
+    'exportOptions': (SketchExportOptions, []),
+    'frame': (SketchRect, BASE_FRAME),
+    'isFlippedHorizontal': (asBool, False),
+    'isFlippedVertical': (asBool, False),
+    'isLocked': (asBool, False),
+    'isVisible': (asBool, True),
+    'layerListExpandedType': (asInt, 0),
+    'name': (asString, 'Group'),
+    'nameIsFixed': (asBool, False),
+    'originalObjectID': (asId, None),
+    'resizingType': (asInt, 0),
+    'rotation': (asNumber, 0),
+    'shouldBreakMaskChain': (asBool, False),
+    'hasClickThrough': (asBool, False),
   }
 
 class SketchRectangle(SketchBase):
   """
   _class: 'rectangle',
   do_objectID: UUID,
+  booleanOperation: number,
   exportOptions: SketchExportOptions,
   frame: SketchRect,
+  isFixedToViewport': bool,
   isFlippedHorizontal: bool,
   isFlippedVertical: bool,
   isLocked: bool,
@@ -959,13 +1059,33 @@ class SketchRectangle(SketchBase):
   shouldBreakMaskChain: bool,
   booleanOperation: number,
   edited: bool,
+  points: CurvePointList,
   path: SketchPath,
   fixedRadius: number,
   hasConvertedToNewRoundCorners: bool
   """
   CLASS = 'rectangle'
   ATTRS = {
-
+    'do_objectID': (asId, None),
+    'booleanOperation': (asInt, -1),
+    'exportOptions': (SketchExportOptions, []),
+    'frame': (SketchRect, BASE_FRAME),
+    'isFixedToViewport': (asBool, False),
+    'isFlippedHorizontal': (asBool, bool),
+    'isFlippedVertical': (asBool, bool),
+    'isLocked': (asBool, bool),
+    'isVisible': (asBool, bool),
+    'layerListExpandedType': (asNumber, 0),
+    'name': (asString, 'Rectangle'),
+    'nameIsFixed': (asBool, bool),
+    'resizingType': (asInt, 0),
+    'rotation': (asNumber, 0),
+    'shouldBreakMaskChain': (asBool, False),
+    'edited': (asBool, False),
+    'path': (SketchPath, None),
+    'points': (SketchCurvePointList, []),
+    'fixedRadius': (asNumber, 0),
+    'hasConvertedToNewRoundCorners': (asBool, True)
   }
 
 class SketchOval(SketchBase):
@@ -1053,7 +1173,7 @@ class SketchDocument(SketchBase):
   """
   CLASS = 'document'
   ATTRS = {
-    'do_objectID': (asId, 0),
+    'do_objectID': (asId, None),
     'assets': (SketchAssetsCollection, []),
     'colorSpace': (asInt, 0),
     'currentPageIndex': (asInt, 0),
@@ -1087,6 +1207,7 @@ class SketchPage(SketchLayer):
   # layers: [SketchSymbolMaster],
   + name: string,
   + nameIsFixed: bool,
+  + resizingConstraint: number,
   + resizingType: number,
   + rotation: number,
   + shouldBreakMaskChain: bool,
@@ -1097,9 +1218,10 @@ class SketchPage(SketchLayer):
   """
   CLASS = 'page'
   ATTRS = {
-    'do_objectID': (asId, 0),    
+    'do_objectID': (asId, None),    
     'booleanOperation': (asInt, -1),
-    'frame': (SketchRect, None),
+    'frame': (SketchRect, BASE_FRAME),
+    'exportOptions': (SketchExportOptions, None),
     'hasClickThrough': (asBool, True),
     'includeInCloudUpload': (asBool, False),
     'isFlippedHorizontal': (asBool, False),
@@ -1109,6 +1231,7 @@ class SketchPage(SketchLayer):
     'layerListExpandedType': (asInt, 0),
     'name': (asString, 'Untitled'),
     'nameIsFixed': (asBool, False),
+    'resizingConstraint': (asNumber, 63),
     'resizingType': (asInt, 0),
     'rotation': (asNumber, 0),
     'shouldBreakMaskChain': (asBool, False),
@@ -1117,29 +1240,10 @@ class SketchPage(SketchLayer):
     'horizontalRulerData': (SketchRulerData, None),
     'userInfo': (asDict, {}),
   }
-  def asJson(self):
-    d = {}
-    for attrName in self.ATTRS.keys():
-      attr = getattr(self, attrName)
-      if isinstance(attr, (list, tuple)):
-        l = [] 
-        for e in attr:
-          if hasattr(e, 'asJson'):
-            l.append(e.asJson())
-        attr = l
-      elif hasattr(attr, 'asJson'):
-        attr = attr.asJson()
-      if attr is not None:
-        assert isinstance(attr, (dict, int, float, list, tuple, str)), attr
-        d[attrName] = attr
-    if not d:
-      return None
-    d['_class'] = self.CLASS
-    d['layers'] = []
-    return d
 
 class SketchFile:
-  def __init__(self):
+  def __init__(self, path=None):
+    self.path = path or UNTITLED_SKETCH
     self.pages = {}
     self.document = None
     self.user = None 
@@ -1147,6 +1251,40 @@ class SketchFile:
 
   def __repr__(self):
     return '<sketchFile>'   
+
+  def find(self, findType):
+    found = []
+    for pageId, page in self.pages.items():
+      page.find(findType, found)
+    return found
+
+  def _get_imagesPath(self):
+    """Answer the _images/ path, related to self.path
+    
+    >>> SketchFile('/a/b/c/d.sketch').imagesPath
+    '/a/b/c/d_images/'
+    >>> SketchFile('d.sketch').imagesPath
+    'd_images/'
+    >>> SketchFile('a/b/c').imagesPath
+    'a/b/c/_images/'
+    >>> SketchFile().imagesPath
+    'untitled_images/'
+    """
+    path = self.path
+    if path.endswith('.' + FILETYPE_SKETCH):
+      parts = path.split('/')
+      if len(parts) > 1:
+        imagesPath = '/'.join(parts[:-1]) + '/'
+      else:
+        imagesPath = ''
+      imagesPath += (parts[-1].replace('.'+FILETYPE_SKETCH, '')) + IMAGES_PATH
+    else:
+      if not path.endswith('/'):
+        path += '/'
+      imagesPath = path + IMAGES_PATH
+    return imagesPath
+  imagesPath = property(_get_imagesPath) # Read only
+
 
 # meta.json
 class SketchMeta(SketchBase):
