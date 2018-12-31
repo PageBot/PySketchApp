@@ -106,7 +106,7 @@ class SketchAppReader(SketchAppBase):
     for key in zipInfo:
       if key.startswith(PREVIEWS_JSON): # This is a preview image
         previewBinary = zf.read(key)
-        fp = open(imagesPath + key.split('/')[-1], 'wb')
+        fp = open(imagesPath + key.split('/')[-1], 'wb') # Save in _images/ folder
         fp.write(previewBinary)
         fp.close()
 

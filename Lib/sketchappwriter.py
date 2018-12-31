@@ -80,12 +80,15 @@ class SketchAppWriter(SketchAppBase):
       zf.write(tmpPath, arcname='pages/'+pageId+'.json')
       os.remove(tmpPath)
 
-
     # Recursively find all images in the node tree, so we can reconstruct
     # the internal file name from external file name (in _images/)
     imagesPath = sketchFile.imagesPath
     for image in sketchFile.find('bitmap'): # Recursively find all bitmap layers
       zf.write(imagesPath + image.name + '.png', arcname=image.image._ref)
+
+    previewFileName = 'preview.png' # TODO: Make more generic?
+    if os.path.exists(imagesPath + previewFileName):
+      zf.write(imagesPath + previewFileName, arcname=PREVIEWS_JSON + previewFileName)
 
     zf.close()
 

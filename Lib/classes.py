@@ -46,10 +46,13 @@ USER_JSON = 'user.json'
 META_JSON = 'meta.json'
 PAGES_JSON = 'pages/'
 IMAGES_JSON = 'images/'
-PREVIEWS_PATH = 'previews/' # Internal path for preview images
+PREVIEWS_JSON = 'previews/' # Internal path for preview images
 
 BASE_FRAME = dict(x=0, y=0, width=1, height=1)
 POINT_ORIGIN = '{0, 0}'
+
+APP_VERSION = "51.3"
+APP_ID = 'com.bohemiancoding.sketch3'
 
 # SketchApp 43 files JSON types
 
@@ -146,29 +149,46 @@ def asDict(v):
 def asList(v):
   return list(v)
 
+def FontList(v):
+  return []
+
+def HistoryList(v):
+  return []
+
+
 class SketchAppBase:
   """Base class for SketchAppReader and SketchAppWriter"""
 
   def __init__(self, overwriteImages=False):
     self.overwriteImages = overwriteImages
 
-  def _get_parent(self):
-    return self._parent() # Get weakref to parent node
-  def _set_parent(self, parent):
-    self._parent = weakref.ref(parent)
-  parent = property(_get_parent, _set_parent)
-
 class SketchBase:
 
   REPR_ATTRS = ['name'] # Attributes to be show in __repr__
 
-  def __init__(self, d):
+  def __init__(self, d, parent):
     if d is None:
       d = {}
     self._class = self.CLASS # Forces values to default.
     # Expect dict of attrNames and (method_Or_SketchBaseClass, default) as value
     for attrName, (m, default) in self.ATTRS.items():
       setattr(self, attrName, m(d.get(attrName, default)))
+    self.parent = parent # Save reference to parent layer as weakref.
+
+  def _get_parent(self):
+    return self._parent() # Get weakref to parent node
+  def _set_parent(self, parent):
+    self._parent = weakref.ref(parent)
+  parent = property(_get_parent, _set_parent)
+  
+  def _get_root(self):
+    """Answer the root (SketchFile instance) of self, searching upwards 
+    through chain of parents. Answer None if no root can be found.
+    """
+    parent = self.parent # Expand weakref
+    if parent is not None:
+      return self.parent # Still searching in layer.parent sequence
+    return None
 
   def __getitem__(self, attrName):
     """Allow addressing as dictionary too."""
@@ -248,13 +268,17 @@ class SketchCurvePoint(SketchBase):
     'point': (Point, POINT_ORIGIN),
   }
 
+class PageAndArtboardList(d):
+  pass
+
 class SketchLayer(SketchBase):
 
   def __init__(self, d):
     SketchBase.__init__(self, d)
     self.layers = [] # List of Sketch element instances.
     for layer in d.get('layers', []):
-      self.layers.append(SKETCHLAYER_PY[layer['_class']](layer))
+      # Create new layer, set self as its weakref parent and add to self.layers list.
+      self.layers.append(SKETCHLAYER_PY[layer['_class']](layer, self))
 
   def asJson(self):
     d = SketchBase.asJson(self)
@@ -1242,6 +1266,8 @@ class SketchPage(SketchLayer):
   }
 
 class SketchFile:
+  """Holds entire data file. Top of layer.parent-->layer.parent-->sketchFile chain.
+  """
   def __init__(self, path=None):
     self.path = path or UNTITLED_SKETCH
     self.pages = {}
@@ -1305,9 +1331,23 @@ class SketchMeta(SketchBase):
   CLASS = 'meta'
   ATTRS = {
     'commit': (asString, ''),
-    'appVersion': (asString, ''),
+    'appVersion': (asString, APP_VERSION),
     'build': (asNumber, 0),
+    'app': (asString, APP_ID),
+    #'pagesAndArtboards': (PageAndArtboardList, []),
+    'fonts': (FontList, []), # Font names
+    'version': (asInt, 0),
+    'saveHistory': (HistoryList, []), # 'BETA.38916'
+    'autosaved': (asInt, 0),
+    'variant': (asString, ''),
   }
+
+  def __init__(self, d, parent):
+    SketchBase.__init__(self, d, parent)
+    self.pagesAndArtboards = [] # List of Sketch element instances.
+    for layer in d.get('layers', []):
+      # Create new layer, set self as its weakref parent and add to self.layers list.
+      self.layers.append(SKETCHLAYER_PY[layer['_class']](layer, self))
 
 # user.json
 class SketchUser(SketchBase):
