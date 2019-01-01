@@ -61,7 +61,7 @@ class SketchAppReader(SketchAppBase):
     if DOCUMENT_JSON in zipInfo:
       fc = zf.read(DOCUMENT_JSON)
       d = json.loads(fc)
-      skf.document = SketchDocument(d)
+      skf.document = SketchDocument(d, skf)
     else:
       return None # Cannot readw this file.
     
@@ -69,23 +69,23 @@ class SketchAppReader(SketchAppBase):
     if USER_JSON in zipInfo:
       fc = zf.read(USER_JSON)
       d = json.loads(fc)
-      skf.user = SketchUser(d)
-    
-    # Set general meta info
-    if META_JSON in zipInfo:
-      fc = zf.read(META_JSON)
-      d = json.loads(fc)
-      skf.meta = SketchMeta(d)
-    
+      skf.user = SketchUser(d, skf)
+       
     # Read pages and build self.imagesId2Path dictionary, as we find sId-->name relations.
     for key in zipInfo:
       if key.startswith(PAGES_JSON): # This much be a page.
         fc = zf.read(key)
         sketchPageInfo = json.loads(fc)
         # Reading pages/layers will find all docment images, and store them in self.imagesId2Path
-        sketchPage = SketchPage(sketchPageInfo)
+        sketchPage = SketchPage(sketchPageInfo, skf)
         skf.pages[sketchPage['do_objectID']] = sketchPage
 
+    # Set general meta info
+    if META_JSON in zipInfo:
+      fc = zf.read(META_JSON)
+      d = json.loads(fc)
+      skf.meta = SketchMeta(d, skf)
+ 
     # Find all imaes used in the file tree, so we can save them with their layer name.
     # Note that for now this is not a safe method, in case there are layers with
     # the same name in the document that refer to different bitmap files.

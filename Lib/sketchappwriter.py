@@ -30,6 +30,9 @@ class SketchAppWriter(SketchAppBase):
   """
   >>> from sketchappreader import SketchAppReader
   >>> readPath = '../Test/TestImage.sketch'
+  >>> readPath = '../Test/TestRectangles.sketch'
+  >>> readPath = '../Test/TestOval.sketch'
+  >>> readPath = '../Test/TestABC.sketch'
   >>> reader = SketchAppReader()
   >>> skf = reader.read(readPath)
   >>> skf
