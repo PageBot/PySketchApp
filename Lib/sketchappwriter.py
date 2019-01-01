@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 # -----------------------------------------------------------------------------
 #
-#  P Y 2 S K E T C H A P P 2 P Y
+#  S K E T C H A P P 2 P Y
 #
 #  Copyright (c) 2016+ Buro Petr van Blokland + Claudia Mens
 #  www.pagebot.io
@@ -24,20 +24,22 @@
 #  This description is not complete. 
 #  Additions made where found in the Reading specification of this context.
 #
-from classes import *
+from sketchclasses import *
 
 class SketchAppWriter(SketchAppBase):
   """
   >>> from sketchappreader import SketchAppReader
-  >>> readPath = '../Test/TestImage.sketch'
-  >>> #readPath = '../Test/TestRectangles.sketch'
+  >>> #readPath = '../Test/TestImage.sketch'
+  >>> readPath = '../Test/TestRectangles.sketch'
+  >>> #readPath = '../Test/TestStar.sketch'
+  >>> #readPath = '../Test/TestPolygon.sketch'
   >>> #readPath = '../Test/TestOval.sketch'
   >>> #readPath = '../Test/TestABC.sketch'
   >>> reader = SketchAppReader()
   >>> skf = reader.read(readPath)
   >>> skf
   <sketchFile>
-  >>> writePath = '../Test/TestImageWrite.sketch'
+  >>> writePath = readPath.replace('.sketch', 'Write.sketch')
   >>> writer = SketchAppWriter()
   >>> writer.write(writePath, skf)
   """

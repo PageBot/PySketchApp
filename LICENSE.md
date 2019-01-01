@@ -1,5 +1,5 @@
 
-The Py2SketchAppPy2 python source code is available under the following MIT license:
+The SketchAppPy2 python source code is available under the following MIT license:
 
 Copyright (c) 2016+ Buro Petr van Blokland + Claudia Mens (http://pagebot.io)
 

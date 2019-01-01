@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 # -----------------------------------------------------------------------------
 #
-#  P Y 2 S K E T C H A P P 2 P Y
+#  S K E T C H A P P 2 P Y
 #
 #  Copyright (c) 2016+ Buro Petr van Blokland + Claudia Mens
 #  www.pagebot.io

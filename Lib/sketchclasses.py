@@ -435,13 +435,20 @@ class SketchGradient(SketchBase):
     'stops': (SketchGradientStopList, []),
     'to_': (asPoint, None),
   }
-'''
-type SketchGraphicsContextSettings = {
+
+class SketchGraphicsContextSettings(SketchBase):
+  """
   _class: 'graphicsContextSettings',
   blendMode: number,
   opacity: number
-}
+  """
+  CLASS = 'graphicsContextSettings'
+  ATTRS = {
+    'blendMode': (asNumber, 0),
+    'opacity': (asNumber, 1),
+  }
 
+'''
 type SketchInnerShadow = {
   _class: 'innerShadow',
   isEnabled: bool,
@@ -484,8 +491,8 @@ class SketchFill(SketchBase):
     'patternTileScale': (asNumber, 1),
   }
 
-'''
-type SketchShadow = {
+class SketchShadow(SketchBase):
+  """
   _class: 'shadow',
   isEnabled: bool,
   blurRadius: number,
@@ -494,8 +501,19 @@ type SketchShadow = {
   offsetX: number,
   offsetY: number,
   spread: number
-}
+  """
+  CLASS = 'shadow'
+  ATTRS = {
+    'isEnabled': (asBool, True),
+    'blurRadius': (asNumber, 0),
+    'color': (SketchColor, BLACK_COLOR),
+    'contextSettings': (SketchGraphicsContextSettings, {}),
+    'offsetX': (asNumber, 0),
+    'offsetY': (asNumber, 0),
+    'spread': (asNumber, 0),  
+  }
 
+'''
 type SketchBlur = {
   _class: 'blur',
   isEnabled: bool,
@@ -610,12 +628,20 @@ def SketchBordersList(sketchBorders, parent):
     return l
   return None
 
+def SketchShadowsList(sketchShadows, parent):
+  l = []
+  for sketchShadow in sketchShadows:
+    l.append(SketchShadow(sketchShadow, parent))
+  if l:
+    return l
+  return None
+
 class SketchStyle(SketchBase):
   """
   _class: 'style',
   + do_objectID: UUID,
   blur: ?[SketchBlur],
-  borders: ?[SketchBorder],
+  + borders: ?[SketchBorder],
   borderOptions: ?SketchBorderOptions,
   contextSettings: ?SketchGraphicsContextSettings,
   colorControls: ?SketchColorControls,
@@ -623,7 +649,7 @@ class SketchStyle(SketchBase):
   + fills: [SketchFill],
   innerShadows: [SketchInnerShadow],
   + miterLimit: number,
-  shadows: ?[SketchShadow],
+  + shadows: ?[SketchShadow],
   sharedObjectID: UUID,
   startDecorationType: number,
   textStyle: ?SketchTextStyle
@@ -637,6 +663,7 @@ class SketchStyle(SketchBase):
     'endMarkerType': (asInt, 0),
     'borders': (SketchBordersList, []),
     'fills': (SketchFillList, []),
+    'shadows': (SketchShadowsList, []),
     'miterLimit': (asInt, 10),
     'startMarkerType': (asInt, 0),
     'windingRule': (asInt, 1)
@@ -1325,6 +1352,95 @@ class SketchOval(SketchBase):
     'points': (SketchCurvePointList, []),
   }
 
+
+class SketchStar(SketchBase):
+  """
+  _class: 'star',
+  do_objectID: UUID,
+  exportOptions: SketchExportOptions,
+  frame: SketchRect,
+  isFlippedHorizontal: bool,
+  isFlippedVertical: bool,
+  isLocked: bool,
+  isVisible: bool,
+  layerListExpandedType: number,
+  name: string,
+  nameIsFixed: bool,
+  resizingType: number,
+  rotation: number,
+  shouldBreakMaskChain: bool,
+  booleanOperation: number,
+  edited: bool,
+  path: SketchPath  
+  """
+  CLASS = 'star'
+  ATTRS = {
+    'do_objectID': (asId, None),
+    'booleanOperation': (asBool, -1),
+    'exportOptions': (SketchExportOptions, {}),
+    'frame': (SketchRect, BASE_FRAME),
+    'isFixedToViewport': (asBool, False),
+    'isFlippedHorizontal': (asBool, False),
+    'isFlippedVertical': (asBool, False),
+    'isLocked': (asBool, False),
+    'isVisible': (asBool, True),
+    'layerListExpandedType': (asInt, 0),
+    'name': (asString, CLASS),
+    'nameIsFixed': (asBool, False),
+    'resizingConstraint': (asInt, 63),
+    'resizingType': (asInt, 0),
+    'rotation': (asNumber, 0),
+    'shouldBreakMaskChain': (asBool, False),
+    'edited': (asBool, False),
+    'isClosed': (asBool, True),
+    'pointRadiusBehaviour': (asInt, 1),
+    'points': (SketchCurvePointList, []),
+  }
+
+class SketchPolygon(SketchBase):
+  """
+  _class: 'polygon',
+  do_objectID: UUID,
+  exportOptions: SketchExportOptions,
+  frame: SketchRect,
+  isFlippedHorizontal: bool,
+  isFlippedVertical: bool,
+  isLocked: bool,
+  isVisible: bool,
+  layerListExpandedType: number,
+  name: string,
+  nameIsFixed: bool,
+  resizingType: number,
+  rotation: number,
+  shouldBreakMaskChain: bool,
+  booleanOperation: number,
+  edited: bool,
+  path: SketchPath  
+  """
+  CLASS = 'polygon'
+  ATTRS = {
+    'do_objectID': (asId, None),
+    'booleanOperation': (asBool, -1),
+    'exportOptions': (SketchExportOptions, {}),
+    'frame': (SketchRect, BASE_FRAME),
+    'isFixedToViewport': (asBool, False),
+    'isFlippedHorizontal': (asBool, False),
+    'isFlippedVertical': (asBool, False),
+    'isLocked': (asBool, False),
+    'isVisible': (asBool, True),
+    'layerListExpandedType': (asInt, 0),
+    'name': (asString, CLASS),
+    'nameIsFixed': (asBool, False),
+    'resizingConstraint': (asInt, 63),
+    'resizingType': (asInt, 0),
+    'rotation': (asNumber, 0),
+    'shouldBreakMaskChain': (asBool, False),
+    'edited': (asBool, False),
+    'isClosed': (asBool, True),
+    'pointRadiusBehaviour': (asInt, 1),
+    'points': (SketchCurvePointList, []),
+  }
+
 # Conversion of Sketch layer class name to Python class.
 SKETCHLAYER_PY = {
   'text': SketchText,
@@ -1336,6 +1452,8 @@ SKETCHLAYER_PY = {
   'group': SketchGroup,
   'rectangle': SketchRectangle,
   'oval': SketchOval,
+  'star': SketchStar,
+  'polygon': SketchPolygon,
 }
 
 '''
