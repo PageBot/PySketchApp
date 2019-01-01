@@ -457,7 +457,9 @@ def SketchFillList(sketchFills, parent):
   l = []
   for fill in sketchFills:
     l.append(SketchFill(fill, parent))
-  return l
+  if l:
+    return l
+  return None # Ignore in output
 
 class SketchFill(SketchBase):
   """
@@ -600,6 +602,14 @@ class SketchColorControls(SketchBase):
     'saturation': (asNumber, 1),
   }
 
+def SketchBordersList(sketchBorders, parent):
+  l = []
+  for sketchBorder in sketchBorders:
+    l.append(SketchBorder(sketchBorder, parent))
+  if l:
+    return l
+  return None
+
 class SketchStyle(SketchBase):
   """
   _class: 'style',
@@ -625,6 +635,7 @@ class SketchStyle(SketchBase):
   ATTRS = {
     'do_objectID': (asId, None),
     'endMarkerType': (asInt, 0),
+    'borders': (SketchBordersList, []),
     'fills': (SketchFillList, []),
     'miterLimit': (asInt, 10),
     'startMarkerType': (asInt, 0),
@@ -1099,8 +1110,10 @@ class SketchBitmap(SketchBase):
   + frame: SketchRect,
   isFlippedHorizontal: bool,
   isFlippedVertical: bool,
+  + isFixedToViewport: bool,
   isLocked: bool,
   isVisible: bool,
+  intendedDPI:number, 
   layerListExpandedType: number,
   name: string,
   nameIsFixed: bool,
@@ -1109,6 +1122,7 @@ class SketchBitmap(SketchBase):
   rotation: number,
   shouldBreakMaskChain: bool,
   style: SketchStyle,
+  userInfo: {}
   clippingMask: SketchNestedPositionString,
   fillReplacesImage: bool,
   image: SketchMSJSONFileReference,
@@ -1123,8 +1137,10 @@ class SketchBitmap(SketchBase):
     'frame': (SketchRect, BASE_FRAME),
     'isFlippedHorizontal': (asBool, False),
     'isFlippedVertical': (asBool, False),
+    'isFixedToViewport': (asBool, False),
     'isLocked': (asBool, False),
     'isVisible': (asBool, True),
+    'intendedDPI': (asNumber, 72),
     'layerListExpandedType': (asInt, 0),
     'name': (asString, ''),
     'resizingConstraint': (asNumber, 63),
@@ -1133,7 +1149,8 @@ class SketchBitmap(SketchBase):
     'rotation': (asNumber, 0),
     'shouldBreakMaskChain': (asBool, False),
     'style': (SketchStyle, None),
-    'clippingMask': (asRect, None),
+    'userInfo': (asDict, {}),
+    'clippingMask': (asString, BASE_FRAME),
     'fillReplacesImage': (asBool, False),
     'image': (SketchMSJSONFileReference, None),
     'nineSliceCenterRect': (asRect, None),
