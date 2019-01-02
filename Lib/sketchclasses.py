@@ -37,6 +37,9 @@ import json
 import re
 import io
 import weakref
+import time
+from random import randint
+from inspect import isclass, isfunction
 
 FILETYPE_SKETCH = 'sketch' # SketchApp file extension
 UNTITLED_SKETCH = 'untitled.' + FILETYPE_SKETCH # Name for untitled SketchFile.path
@@ -48,8 +51,10 @@ PAGES_JSON = 'pages/'
 IMAGES_JSON = 'images/'
 PREVIEWS_JSON = 'previews/' # Internal path for preview images
 
+MS_IMMUTABLE_PAGE = 'MSImmutablePage' # MSJSONFileReference._ref_class value
+
 # Defaults 
-BASE_FRAME = dict(x=0, y=0, width=1, height=1)
+BASE_FRAME = {}
 POINT_ORIGIN = '{0, 0}'
 BLACK_COLOR = dict(red=0, green=0, blue=0, alpha=1)
 DEFAULT_FONT = 'Verdana'
@@ -74,6 +79,18 @@ type FilePathString = string
 POINT_PATTERN = re.compile('\{([0-9\.\-]*), ([0-9\.\-]*)\}')
   # type SketchPositionString = string // '{0.5, 0.67135115527602085}'
 
+def newObjectID():
+  """Answer a new random objectID in the pattern of existing ones.
+
+  >>> len(newObjectID())
+  36
+  """
+  t = ('%08X' % int(time.time()*100))[:8]
+  id1 = ('%04X' % randint(0, 99999))[:4]
+  id2 = ('%04X' % randint(0, 99999))[:4]
+  id3 = ('%04X' % randint(0, 99999))[:4]
+  id4 = ('%012X' % randint(0, 999999999999))[:12]
+  return '%s-%s-%s-%s-%s' % (t, id1, id2, id3, id4)
 
 class SketchAppBase:
   """Base class for SketchAppReader and SketchAppWriter"""
@@ -85,23 +102,42 @@ class SketchBase:
 
   REPR_ATTRS = ['name'] # Attributes to be show in __repr__
 
-  def __init__(self, d, parent=None):
-    if d is None:
-      d = {}
+  def __init__(self, parent=None, **kwargs):
+    """Using **kwargs, the attributes can be set as name values, as well
+    being used from dictionaries in the Sketch JSON file. 
+
+    >>> 
+    """
     self._class = self.CLASS # Forces values to default, in case it is not None
     self.parent = parent # Save reference to parent layer as weakref.
-    # Expect dict of attrNames and (method_Or_SketchBaseClass, default) as value
-    for attrName, (m, default) in self.ATTRS.items():
-      try:
-        setattr(self, attrName, m(d.get(attrName, default), self))
-      except TypeError:
-        print(m)
-  def __getitem__(self, attrName):
-    """Allow addressing as dictionary too."""
-    return getattr(self, attrName)
+    self.setAttributes(**kwargs)
+
+  def setAttributes(self, **kwargs):
+    """Expect kwargs of attrNames and (method_Or_SketchBaseClass, default) as value.
+    This way the instance can be created from separate attributes, as well
+    as the JSON dict that is read fron a Sketch file.
+    Omitted attributes are initialize from the self.ATTRS class dictionary.
+
+    >>> d = dict(x=100, y=200, width=300, height=400)
+    >>> SketchRect(**d)
+    <rect x=100 y=200>
+    >>> SketchRect(x=100, y=300)
+    <rect x=100 y=300>
+    """
+    for name, (m, value) in self.ATTRS.items(): # Create attribute, using method or class
+      if name in kwargs:
+        value = kwargs[name]
+      if isclass(m):
+        if isinstance(value, dict):
+          value = m(parent=self, **value)
+      elif isfunction(m):
+        value = m(value, parent=self)
+      setattr(self, name, value)
+    for name, value in kwargs.items(): # Not part of the Sketch attribute, just set value unchanged.
+        setattr(self, name, value)
 
   def __repr__(self):
-    s = ['<%s' % self._class]
+    s = ['<%s' % (self._class or '')]
     for attrName in self.REPR_ATTRS:
       if hasattr(self, attrName):
         s.append('%s=%s' % (attrName, getattr(self, attrName)))
@@ -128,19 +164,20 @@ class SketchBase:
   root = property(_get_root)
 
   def asDict(self):
-    d = dict(_class=self._class)
+    d = {}
+    if self._class is not None:
+      d['_class'] = self._class
     for attrName, (m, default) in self.ATTRS.items():
       d[attrName] = getattr(self, attrName)
     return d
 
-  def find(self, nodeType, found=None):
+  def find(self, _class=None, name=None, pattern=None, found=None):
     if found is None:
       found = []
-    if self._class == nodeType:
+    if (_class is not None and self._class == _class) or \
+       (name is not None and self.name == name) or \
+       (pattern is not None and pattern in self.name):
       found.append(self)
-    if hasattr(self, 'layers'):
-      for layer in self.layers:
-        layer.find(nodeType, found)
     return found
 
   def asJson(self):
@@ -169,21 +206,22 @@ class SketchBase:
 class Point(SketchBase):
   """Interpret the {x,y} string into a point2D.
 
-  >>> Point('{0, 0}')
+  >>> Point(xy='{0, 0}')
   <point x=0.0 y=0.0>
-  >>> Point('{0000021, -12345}')
+  >>> Point(xy='{0000021, -12345}')
   <point x=21.0 y=-12345.0>
-  >>> Point('{10.05, -10.66}')
+  >>> Point(xy='{10.05, -10.66}')
   <point x=10.05 y=-10.66>
   """
-  def __init__(self, sketchPoint, parent=None):
-    sx, sy = POINT_PATTERN.findall(sketchPoint)[0]
+  REPR_ATTRS = ['x', 'y'] # Attributes to be show in __repr__
+  CLASS = 'point'
+
+  def __init__(self, parent=None, **kwargs):
+    self._class = self.CLASS
+    sx, sy = POINT_PATTERN.findall(kwargs.get('xy', POINT_ORIGIN))[0]
     self.x = asNumber(sx)
     self.y = asNumber(sy)
     self.parent = parent
-
-  def __repr__(self):
-    return '<point x=%s y=%s>' % (self.x, self.y)
 
   def asJson(self):
     return '{%s, %s}' % (self.x, self.y)
@@ -251,10 +289,10 @@ def FontList(v, parent=None):
 def HistoryList(v, parent=None):
   return ['NONAPPSTORE.57544']
 
-def SketchCurvePointList(curvePointList, parent):
+def SketchCurvePointList(curvePointList, parent=None):
   l = []
   for curvePoint in curvePointList:
-    l.append(SketchCurvePoint(curvePoint))
+    l.append(SketchCurvePoint(parent=parent, **curvePoint))
   return l
 
 class SketchCurvePoint(SketchBase):
@@ -282,22 +320,6 @@ class SketchCurvePoint(SketchBase):
     'point': (Point, POINT_ORIGIN),
   }
 
-class SketchLayer(SketchBase):
-
-  def __init__(self, d, parent):
-    SketchBase.__init__(self, d, parent)
-    self.layers = [] # List of Sketch element instances.
-    for layer in d.get('layers', []):
-      # Create new layer, set self as its weakref parent and add to self.layers list.
-      self.layers.append(SKETCHLAYER_PY[layer['_class']](layer, self))
-
-  def asJson(self):
-    d = SketchBase.asJson(self)
-    d['layers'] = layers = []
-    for layer in self.layers:
-      layers.append(layer.asJson())
-    return d
-
 class SketchImageCollection(SketchBase):
   """
   _class: 'imageCollection',
@@ -319,8 +341,7 @@ class SketchColor(SketchBase):
 
   For more color functions see PageBot/toolbox/color
 
-  >>> test = dict(red=0.5, green=0.1, blue=1)
-  >>> color = SketchColor(test, None)
+  >>> color = SketchColor(red=0.5, green=0.1, blue=1)
   >>> color.red
   0.5
   >>> sorted(color.asDict())
@@ -347,8 +368,8 @@ class SketchBorder(SketchBase):
 
   For usage in PageBot, use equivalent PageBot/elements/Element.getBorderDict()
 
-  >>> test = dict(color=dict(red=1))
-  >>> border = SketchBorder(test)
+  >>> color = SketchColor(red=1)
+  >>> border = SketchBorder(color=color)
   >>> border.color
   <color red=1 green=0 blue=0 alpha=0>
   """
@@ -398,21 +419,24 @@ class SketchGradientStop(SketchBase):
   color: SketchColor,
   position: number
   
-  >>> test = dict(color=dict(blue=1), position=1) 
-  >>> gs = SketchGradientStop(test)
+  >>> color = SketchColor(blue=1) 
+  >>> gs = SketchGradientStop(color=color, position=1)
   >>> gs.color, gs.position
   (<color red=0 green=0 blue=1 alpha=0>, 1)
+  >>> gs = SketchGradientStop()
+  >>> gs.color, gs.position
+  (<color red=0 green=0 blue=0 alpha=1>, 0)
   """
   CLASS = 'gradientStop'
   ATTRS = {
-    'color': (SketchColor, None),
+    'color': (SketchColor, BLACK_COLOR),
     'position': (asPoint, 0), 
   }
 
-def SketchGradientStopList(dd):
+def SketchGradientStopList(dd, parent=None):
   l = []
   for d in dd:
-    l.append(SketchGradientStop(d))
+    l.append(SketchGradientStop(parent=parent, **d))
   return l
 
 class SketchGradient(SketchBase):
@@ -425,6 +449,7 @@ class SketchGradient(SketchBase):
   stops: [SketchGradientStop],
   to: SketchPositionString
 
+  >>> g = SketchGradient()
   """
   CLASS = 'gradient'
   ATTRS = {
@@ -460,10 +485,10 @@ type SketchInnerShadow = {
   spread: 0
 }
 '''
-def SketchFillList(sketchFills, parent):
+def SketchFillList(sketchFills, parent=None):
   l = []
   for fill in sketchFills:
-    l.append(SketchFill(fill, parent))
+    l.append(SketchFill(parent=parent, **fill))
   if l:
     return l
   return None # Ignore in output
@@ -540,7 +565,7 @@ class SketchEncodedAttributes(SketchBase):
   CLASS = 'sketchEncodedAttributes'
   ATTRS = {}
 
-class SketchRect:
+class SketchRect(SketchBase):
   """
   _class: 'rect',
   + do_objectID: UUID,
@@ -550,29 +575,16 @@ class SketchRect:
   + x: number,
   + y: number
   """
-  def __init__(self, d, parent=None):
-    if d is None:
-      d = dict(x=0, y=0, w=0, h=0, constrainProportions=True)
-    self.do_objectID = d.get('do_objectID')
-    self.x = d.get('x', 0)
-    self.y = d.get('y', 0)
-    self.w = d.get('width', 100)
-    self.h = d.get('height', 100)
-    self.constrainProportions = d.get('constrainProportions', False)
-    self.parent = parent
-
-  def __repr__(self):
-    s = '(x=%s y=%d w=%d h=%d' % (self.x, self.y, self.w, self.h)
-    if self.constrainProportions:
-       s += ' constrain=True'
-    return s + ')'
-
-  def asJson(self):
-    d = dict(_class='rect', x=self.x, y=self.y, width=self.w, height=self.h, 
-        constrainProportions=self.constrainProportions)
-    if self.do_objectID is not None:
-      d['do_objectID'] = self.do_objectID
-    return d
+  REPR_ATTRS = ['x', 'y', 'w', 'h'] # Attributes to be show in __repr__
+  CLASS = 'rect'
+  ATTRS = {
+    'do_objectID': (asId, None),
+    'x': (asNumber, 0),
+    'y': (asNumber, 0),
+    'width': (asNumber, 1),
+    'height': (asNumber, 1),
+    'constrainProportions': (asBool, False),
+  }
 
 class SketchTextStyle(SketchBase):
   """
@@ -620,18 +632,18 @@ class SketchColorControls(SketchBase):
     'saturation': (asNumber, 1),
   }
 
-def SketchBordersList(sketchBorders, parent):
+def SketchBordersList(sketchBorders, parent=None):
   l = []
   for sketchBorder in sketchBorders:
-    l.append(SketchBorder(sketchBorder, parent))
+    l.append(SketchBorder(parent=parent, **sketchBorder))
   if l:
     return l
   return None
 
-def SketchShadowsList(sketchShadows, parent):
+def SketchShadowsList(sketchShadows, parent=None):
   l = []
   for sketchShadow in sketchShadows:
-    l.append(SketchShadow(sketchShadow, parent))
+    l.append(SketchShadow(parent=parent, **sketchShadow))
   if l:
     return l
   return None
@@ -683,10 +695,10 @@ class SketchSharedStyle(SketchBase):
     'value': (SketchStyle, None),
   }
 
-def SketchExportFormatList(exporFormats, parent):
+def SketchExportFormatList(exporFormats, parent=None):
   l = []
   for exportFormat in exporFormats:
-    l.append(SketchExportFormat(exportFormat, parent))
+    l.append(SketchExportFormat(parent=parent, **exportFormat))
   return l
 
 class SketchExportFormat(SketchBase):
@@ -797,7 +809,7 @@ class SketchCreated(SketchBase):
 def SketchMSJSONFileReferenceList(refs, parent=None):
   l = []
   for ref in refs:
-    l.append(SketchMSJSONFileReference(ref, parent))
+    l.append(SketchMSJSONFileReference(parent=parent, **ref))
   return l
 
 class SketchMSJSONFileReference(SketchBase):
@@ -873,10 +885,10 @@ class SketchStringAttribute(SketchBase):
     'attributes': (SketchAttributes, None),
   }
 
-def SketchStringAttributeList(stringAttributes, parent):
+def SketchStringAttributeList(stringAttributes, parent=None):
   l = []
   for stringAttribute in stringAttributes:
-    l.append(SketchStringAttribute(stringAttribute, parent))
+    l.append(SketchStringAttribute(parent=parent, **stringAttribute))
   return l
 
 class SketchAttributedString(SketchBase):
@@ -958,6 +970,37 @@ class SketchText(SketchBase):
     'lineSpacingBehaviour': (asInt, 2),
     'textBehaviour': (asInt, 0),
   }
+
+class SketchLayer(SketchBase):
+  """Abstract base layer class if there is an "self.layers" attributes."""
+  def __init__(self, parent=None, **kwargs):
+    SketchBase.__init__(self, parent=parent, **kwargs)
+    self._class = self.CLASS
+    self.layers = [] # List of Sketch element instances.
+    for layerDict in kwargs.get('layers', []):
+      # Create new layer, set self as its weakref parent and add to self.layers list.
+      self.layers.append(SKETCHLAYER_PY[layerDict['_class']](parent=self, **layerDict))
+
+  def __getitem__(self, layerIndex):
+    """In case the layer has layers, then answer them by index."""
+    return self.layers[layerIndex]
+
+  def find(self, _class=None, name=None, pattern=None, found=None):
+    """Check if self matches class, name or pattern. Then search for
+    all layers in self.layers.
+    """
+    found = SketchBase.find(self, _class=_class, name=name, pattern=pattern, found=found)
+    for layer in self.layers:
+        layer.find(_class=_class, name=name, pattern=pattern, found=found)
+    return found
+
+  def asJson(self):
+    """Get attributes from base as JSON dict."""
+    d = SketchBase.asJson(self) 
+    d['layers'] = layers = [] # Add layers list
+    for layer in self.layers:
+      layers.append(layer.asJson())
+    return d
 
 class SketchShapeGroup(SketchLayer):
   """
@@ -1094,7 +1137,6 @@ class SketchArtboard(SketchLayer):
   + layout: LayoutGrid,
   + resizesContent: bool,
   """
-  REPR_ATTRS = ['name', 'frame'] # Attributes to be show in __repr__
   CLASS = 'artboard'
   ATTRS = {
     'do_objectID': (asId, None),
@@ -1590,6 +1632,16 @@ class SketchFile:
       page.find(findType, found)
     return found
 
+  def _get_orderedPages(self):
+    """Answer a list of pages in the order of the self.document.pages"""
+    orderedPages = []
+    for pageRef in self.document.pages:
+      if pageRef._ref_class == MS_IMMUTABLE_PAGE:
+        pageId = pageRef._ref.split('/')[-1]
+        orderedPages.append(self.pages[pageId])
+    return orderedPages
+  orderedPages = property(_get_orderedPages)
+
   def _get_imagesPath(self):
     """Answer the _images/ path, related to self.path
     
@@ -1651,8 +1703,8 @@ class SketchMeta(SketchBase):
     'compatibilityVersion': (asInt, 99),
   }
 
-  def __init__(self, d, parent):
-    SketchBase.__init__(self, d, parent)
+  def __init__(self, parent=None, **kwargs):
+    SketchBase.__init__(self, parent=parent, **kwargs)
     self.pagesAndArtboards = {} # Dictionary of Sketch element instances.
     for pageId, page in self.root.pages.items():
       # Create page or artboard reference
@@ -1677,8 +1729,8 @@ class SketchUser(SketchBase):
   CLASS = 'user'
   ATTRS = {
   }
-  def __init__(self, d, parent):
-    SketchBase.__init__(self, d, parent)
+  def __init__(self, parent=None, **kwargs):
+    SketchBase.__init__(self, parent=parent, **kwargs)
     self.document = dict(pageListHeight=118)
 
   def asJson(self):

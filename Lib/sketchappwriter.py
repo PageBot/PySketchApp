@@ -29,19 +29,20 @@ from sketchclasses import *
 class SketchAppWriter(SketchAppBase):
   """
   >>> from sketchappreader import SketchAppReader
-  >>> #readPath = '../Test/TestImage.sketch'
-  >>> readPath = '../Test/TestRectangles.sketch'
-  >>> #readPath = '../Test/TestStar.sketch'
-  >>> #readPath = '../Test/TestPolygon.sketch'
-  >>> #readPath = '../Test/TestOval.sketch'
-  >>> #readPath = '../Test/TestABC.sketch'
-  >>> reader = SketchAppReader()
-  >>> skf = reader.read(readPath)
-  >>> skf
-  <sketchFile>
-  >>> writePath = readPath.replace('.sketch', 'Write.sketch')
-  >>> writer = SketchAppWriter()
-  >>> writer.write(writePath, skf)
+  >>> testFileNames = ('TestImage.sketch',
+  ...     'TestRectangles.sketch',
+  ...     'TestStar.sketch',
+  ...     'TestPolygon.sketch',
+  ...     'TestOval.sketch',
+  ...     'TestABC.sketch',
+  ... )
+  >>> for fileName in testFileNames:
+  ...     reader = SketchAppReader()
+  ...     readPath = '../Test/' + fileName
+  ...     skf = reader.read(readPath)
+  ...     writePath = readPath.replace('.sketch', 'Write.sketch')
+  ...     writer = SketchAppWriter()
+  ...     writer.write(writePath, skf)
   """
 
   def write(self, path, sketchFile):
