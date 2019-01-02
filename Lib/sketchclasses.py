@@ -120,21 +120,41 @@ class SketchBase:
 
     >>> d = dict(x=100, y=200, width=300, height=400)
     >>> SketchRect(**d)
-    <rect x=100 y=200>
+    <rect x=100.0 y=200.0>
     >>> SketchRect(x=100, y=300)
-    <rect x=100 y=300>
+    <rect x=100.0 y=300.0>
+
+    >>> frame = dict(x=20, y=30)
+    >>> artboard = SketchArtboard(frame=frame)
+    >>> artboard
+    <artboard name=Artboard>
+    >>> artboard.frame
+    <rect x=20.0 y=30.0>
+
+    >>> frame = dict(width=400, height=500)
+    >>> page = SketchPage(frame=frame)
+    >>> page.frame
+    <rect x=0.0 y=0.0>
+
+    >>> frame = dict(x=10, y=20, width=30, height=40)
+    >>> artboard = SketchArtboard(frame=frame)
+    >>> artboard.frame
+    <rect x=10.0 y=20.0>
     """
+    for name, value in kwargs.items(): 
+        # If not part of the Sketch ATTRS attribute, just set value unchanged.
+        if name not in self.ATTRS:
+          setattr(self, name, value)
     for name, (m, value) in self.ATTRS.items(): # Create attribute, using method or class
       if name in kwargs:
         value = kwargs[name]
       if isclass(m):
-        if isinstance(value, dict):
-          value = m(parent=self, **value)
+        if not isinstance(value, dict):
+          value = {name: value}
+        value = m(parent=self, **value)
       elif isfunction(m):
         value = m(value, parent=self)
       setattr(self, name, value)
-    for name, value in kwargs.items(): # Not part of the Sketch attribute, just set value unchanged.
-        setattr(self, name, value)
 
   def __repr__(self):
     s = ['<%s' % (self._class or '')]
@@ -172,11 +192,24 @@ class SketchBase:
     return d
 
   def find(self, _class=None, name=None, pattern=None, found=None):
+    """SketchBase class does not have child layers. Just test if self matchs.
+
+    >>> p = SketchPoint(x=0, y=100)
+    >>> p.find('point')[0] is p
+    True
+    >>> p.find(name='myPoint') # No name set, does not find
+    []
+    >>> p = SketchPoint(x=0, y=200, name='myPoint') # Set attribute, different from ATTRS
+    >>> p.name
+    'myPoint'
+    >>> p.find(name='myPoint')[0] is p
+    True
+    """
     if found is None:
       found = []
     if (_class is not None and self._class == _class) or \
-       (name is not None and self.name == name) or \
-       (pattern is not None and pattern in self.name):
+       (name is not None and hasattr(self, 'name') and self.name == name) or \
+       (pattern is not None and hasattr(self, 'name') and pattern in self.name):
       found.append(self)
     return found
 
@@ -203,28 +236,6 @@ class SketchBase:
       d['_class'] = self.CLASS
     return d
 
-class Point(SketchBase):
-  """Interpret the {x,y} string into a point2D.
-
-  >>> Point(xy='{0, 0}')
-  <point x=0.0 y=0.0>
-  >>> Point(xy='{0000021, -12345}')
-  <point x=21.0 y=-12345.0>
-  >>> Point(xy='{10.05, -10.66}')
-  <point x=10.05 y=-10.66>
-  """
-  REPR_ATTRS = ['x', 'y'] # Attributes to be show in __repr__
-  CLASS = 'point'
-
-  def __init__(self, parent=None, **kwargs):
-    self._class = self.CLASS
-    sx, sy = POINT_PATTERN.findall(kwargs.get('xy', POINT_ORIGIN))[0]
-    self.x = asNumber(sx)
-    self.y = asNumber(sy)
-    self.parent = parent
-
-  def asJson(self):
-    return '{%s, %s}' % (self.x, self.y)
 
 def asRect(sketchNestedPositionString, parent=None):
   """
@@ -255,9 +266,6 @@ def asInt(v, parent=None):
 
 def asBool(v, parent=None):
   return bool(v)
-
-def asPoint(p, parent=None):
-  return p
 
 def asId(v, parent=None):
   return v
@@ -295,6 +303,36 @@ def SketchCurvePointList(curvePointList, parent=None):
     l.append(SketchCurvePoint(parent=parent, **curvePoint))
   return l
 
+class SketchPoint(SketchBase):
+  """Interpret the {x,y} string into a point2D.
+
+  >>> SketchPoint(xy='{0, 0}')
+  <point x=0.0 y=0.0>
+  >>> SketchPoint(xy='{0000021, -12345}')
+  <point x=21.0 y=-12345.0>
+  >>> SketchPoint(xy='{10.05, -10.66}')
+  <point x=10.05 y=-10.66>
+  """
+  REPR_ATTRS = ['x', 'y'] # Attributes to be show in __repr__
+  CLASS = 'point'
+  ATTRS = {
+    'x': (asNumber, 0),
+    'y': (asNumber, 0),
+  }
+  def __init__(self, parent=None, **kwargs):
+    self._class = self.CLASS
+    self.parent = parent
+    for attrName, value in kwargs.items():
+      if attrName not in self.ATTRS:
+        setattr(self, attrName, value)
+
+    sx, sy = POINT_PATTERN.findall(kwargs.get('xy', POINT_ORIGIN))[0]
+    self.x = asNumber(sx)
+    self.y = asNumber(sy)
+
+  def asJson(self):
+    return '{%s, %s}' % (self.x, self.y)
+
 class SketchCurvePoint(SketchBase):
   """
   type SketchCurvePoint = {
@@ -312,12 +350,12 @@ class SketchCurvePoint(SketchBase):
   ATTRS = {
     'do_objectID': (asId, None),
     'cornerRadius': (asNumber, 0),
-    'curveFrom': (Point, POINT_ORIGIN),
+    'curveFrom': (SketchPoint, POINT_ORIGIN),
     'curveMode': (asInt, 1),
-    'curveTo': (Point, POINT_ORIGIN),
+    'curveTo': (SketchPoint, POINT_ORIGIN),
     'hasCurveFrom': (asBool, False),
     'hasCurveTo': (asBool, False),
-    'point': (Point, POINT_ORIGIN),
+    'point': (SketchPoint, POINT_ORIGIN),
   }
 
 class SketchImageCollection(SketchBase):
@@ -339,7 +377,7 @@ class SketchColor(SketchBase):
   green: number,
   red: number
 
-  For more color functions see PageBot/toolbox/color
+  For more extended color functions see PageBot/toolbox/color
 
   >>> color = SketchColor(red=0.5, green=0.1, blue=1)
   >>> color.red
@@ -369,6 +407,8 @@ class SketchBorder(SketchBase):
   For usage in PageBot, use equivalent PageBot/elements/Element.getBorderDict()
 
   >>> color = SketchColor(red=1)
+  >>> color
+  <color red=1 green=0 blue=0 alpha=0>
   >>> border = SketchBorder(color=color)
   >>> border.color
   <color red=1 green=0 blue=0 alpha=0>
@@ -382,7 +422,7 @@ class SketchBorder(SketchBase):
     'thickness': (asNumber, 1)
   }
 
-class LayoutGrid(SketchBase):
+class SketchLayoutGrid(SketchBase):
   """
   + isEnabled: bool,
   + columnWidth: number,
@@ -430,7 +470,7 @@ class SketchGradientStop(SketchBase):
   CLASS = 'gradientStop'
   ATTRS = {
     'color': (SketchColor, BLACK_COLOR),
-    'position': (asPoint, 0), 
+    'position': (asNumber, 0), 
   }
 
 def SketchGradientStopList(dd, parent=None):
@@ -454,11 +494,11 @@ class SketchGradient(SketchBase):
   CLASS = 'gradient'
   ATTRS = {
     'elipseLength': (asNumber, 0),
-    'from_': (asPoint, None),  # Initilaizes to (0, 0)
+    'from_': (SketchPoint, POINT_ORIGIN),  # Initilaizes to (0, 0)
     'gradientType': (asInt, 0),
     'shouldSmoothenOpacity': (asBool, True),
     'stops': (SketchGradientStopList, []),
-    'to_': (asPoint, None),
+    'to_': (SketchPoint, POINT_ORIGIN),
   }
 
 class SketchGraphicsContextSettings(SketchBase):
@@ -485,6 +525,25 @@ type SketchInnerShadow = {
   spread: 0
 }
 '''
+
+def SketchMSJSONFileReferenceList(refs, parent=None):
+  l = []
+  for ref in refs:
+    l.append(SketchMSJSONFileReference(parent=parent, **ref))
+  return l
+
+class SketchMSJSONFileReference(SketchBase):
+  """
+  _class: 'MSJSONFileReference',
+  _ref_class: 'MSImmutablePage' | 'MSImageData',
+  _ref: FilePathString
+  """
+  CLASS = 'MSJSONFileReference'
+  ATTRS = {
+    '_ref_class': (asString, 'MSImageData'),
+    '_ref': (asString, ''),
+  }
+
 def SketchFillList(sketchFills, parent=None):
   l = []
   for fill in sketchFills:
@@ -498,6 +557,8 @@ class SketchFill(SketchBase):
   _class: 'fill',
   isEnabled: bool,
   color: SketchColor,
+  contextSettings: SketchGraphicsContextSettings
+  image: SketchMSJSONFileReferenceList,
   fillType: number,
   gradient: SketchGradient,
   noiseIndex: number,
@@ -509,7 +570,10 @@ class SketchFill(SketchBase):
   ATTRS = {
     'isEnabled': (asBool, True),
     'color': (SketchColor, BLACK_COLOR),
+    'contextSettings': (SketchGraphicsContextSettings, {}),
     'fillType': (asInt, 0),
+    'image': (SketchMSJSONFileReference, None),
+    'gradient': (SketchGradient, None),
     'noiseIndex': (asNumber, 0),
     'noiseIntensity': (asNumber, 0),
     'patternFillType': (asNumber, 1),
@@ -804,24 +868,6 @@ class SketchCreated(SketchBase):
     'version': (asInt, 0),
     'variant': (asString, ''),
     'compatibilityVersion': (asInt, 99)
-  }
-
-def SketchMSJSONFileReferenceList(refs, parent=None):
-  l = []
-  for ref in refs:
-    l.append(SketchMSJSONFileReference(parent=parent, **ref))
-  return l
-
-class SketchMSJSONFileReference(SketchBase):
-  """
-  _class: 'MSJSONFileReference',
-  _ref_class: 'MSImmutablePage' | 'MSImageData',
-  _ref: FilePathString
-  """
-  CLASS = 'MSJSONFileReference'
-  ATTRS = {
-    '_ref_class': (asString, 'MSImageData'),
-    '_ref': (asString, ''),
   }
 
 class SketchFontDescriptorAttributes(SketchBase):
@@ -1134,7 +1180,7 @@ class SketchArtboard(SketchLayer):
   + includeInCloudUpload: bool,
   + isFlowHome: (asBool, False),
   + userInfo: {}
-  + layout: LayoutGrid,
+  + layout: SketchLayoutGrid,
   + resizesContent: bool,
   """
   CLASS = 'artboard'
@@ -1166,7 +1212,7 @@ class SketchArtboard(SketchLayer):
     'includeInCloudUpload': (asBool, True),
     'layers': (asList, []),
     'userInfo': (asDict, {}),
-    'layout': (LayoutGrid, None),
+    'layout': (SketchLayoutGrid, None),
     'resizesContent': (asBool, True),
   }
 
@@ -1626,10 +1672,10 @@ class SketchFile:
   def __repr__(self):
     return '<sketchFile>'   
 
-  def find(self, findType):
+  def find(self, _class=None, name=None, pattern=None):
     found = []
     for pageId, page in self.pages.items():
-      page.find(findType, found)
+      page.find(_class=_class, name=name, pattern=pattern, found=found)
     return found
 
   def _get_orderedPages(self):

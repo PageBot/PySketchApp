@@ -33,18 +33,21 @@ class SketchAppReader(SketchAppBase):
     >>> page.name
     'Page 1'
     >>> page.frame 
+    <rect x=0.0 y=0.0>
     >>> page.isLocked
     False
     >>> page.isVisible
     True
+    >>> page.exportOptions
+    <exportOptions>
     >>> artboard = page.layers[0]
     >>> artboard
     <artboard name=Artboard1>
     >>> artboard.layers
     [<bitmap name=Bitcount_cheese_e>]
     >>> bitmap = artboard.layers[0]
-    >>> bitmap.frame.__class__.__name__
-    (x=300 y=192 w=216 h=216 constrain=True)
+    >>> bitmap.frame
+    <rect x=300.0 y=192.0>
     """
 
     assert path.endswith('.'+FILETYPE_SKETCH)
@@ -97,13 +100,25 @@ class SketchAppReader(SketchAppBase):
     # Also not that renaming the files in the _images/ folder, will disconnect them
     # from placements by bitmap layers.
     # TODO: Solve this later, creating unique file names.
-    for image in skf.find('bitmap'): # Recursively find all bitmap layers.
+    imageRefs = set()
+    for image in skf.find(_class='bitmap'): # Recursively find all bitmap layers.
       imageBinary = zf.read(image.image._ref)
+      # Save by internal name, that we already copied this image.
+      imageRefs.add(image.image._ref)
       # If the image cannot be found by key, then use BitMap id as used in the file.
       # Export the image as separate file in _images directory.
       fbm = open(imagesPath + image.name + '.png', 'wb')
       fbm.write(imageBinary)
       fbm.close()
+
+    # Now copy all remaining images (if not used in bitmap layer), under their own name.
+    for key in zipInfo:
+      if key.startswith(IMAGES_JSON) and key not in imageRefs:
+        imageBinary = zf.read(key)
+        fileName = key.split('/')[-1]
+        fbm = open(imagesPath + fileName, 'wb')
+        fbm.write(imageBinary)
+        fbm.close()
 
     # Save any previews in the _images/ directory too.
     # Note that there may be an potential naming conflict here, in case a layer is called 

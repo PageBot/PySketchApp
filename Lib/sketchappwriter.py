@@ -88,10 +88,20 @@ class SketchAppWriter(SketchAppBase):
 
     # Recursively find all images in the node tree, so we can reconstruct
     # the internal file name from external file name (in _images/)
+    imageRefs = set(['images/preview.png']) # Keep track of images that we did or don't want to
     imagesPath = sketchFile.imagesPath
     for image in sketchFile.find('bitmap'): # Recursively find all bitmap layers
       zf.write(imagesPath + image.name + '.png', arcname=image.image._ref)
+      imageRefs.add(image.image._ref)
 
+    # Now copy all the remaining images in the directory into the zip
+    # keeping their own name. Filter out the preview.png
+    for fileName in os.listdir(imagesPath):
+      if fileName.startswith('.') or ('images/'+fileName) in imageRefs:
+        continue # Skip OS-related based files or file we already did
+      zf.write(imagesPath+fileName, arcname=IMAGES_JSON+fileName)
+
+    # Copy the preview to the right zip directory
     previewFileName = 'preview.png' # TODO: Make more generic?
     if os.path.exists(imagesPath + previewFileName):
       zf.write(imagesPath + previewFileName, arcname=PREVIEWS_JSON + previewFileName)
