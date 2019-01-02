@@ -151,15 +151,17 @@ class SketchApi:
         g.do_objectID = newObjectID()
         self.layer.layers.append(g)
 
-        # 
         rFrame = dict(_class='rect', x=0, y=0, width=width, height=height)
         r = SketchRectangle(parent=g, frame=rFrame, do_objectID=newObjectID(),
-            points=points, name='Path')
-        # TODO: MAKE POINTS HERE
-        #r.points = (
-        #    SketchCurvePoint()
-        #)
+            name='Path')
+        r.points = [
+            SketchCurvePoint(parent=r, curveFrom='{0, 0}', curveTo='{0, 0}', point='{0, 0}'),
+            SketchCurvePoint(parent=r, curveFrom='{1, 0}', curveTo='{1, 0}', point='{1, 0}'),
+            SketchCurvePoint(parent=r, curveFrom='{1, 1}', curveTo='{1, 1}', point='{1, 1}'),
+            SketchCurvePoint(parent=r, curveFrom='{0, 1}', curveTo='{1, 1}', point='{0, 1}'),
+        ]
         g.layers.append(r)
+
     def line(self, p1, p2):
         pass
 

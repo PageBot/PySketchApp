@@ -244,6 +244,7 @@ class SketchBase:
       return None
     if self.CLASS is not None:
       d['_class'] = self.CLASS
+
     return d
 
 
@@ -1143,6 +1144,12 @@ class SketchPath(SketchBase):
     'points': (SketchCurvePointList, []),
   }
 
+def SketchPathOptional(sketchPath, parent=None):
+  sp = SketchPath(parent=parent, **sketchPath)
+  if sp.points: # Any points, then keep it
+    return sp
+  return None # Otherwise ignore the pat.
+
 class SketchShapePath(SketchBase):
   """
   _class: 'shapePath',
@@ -1161,7 +1168,7 @@ class SketchShapePath(SketchBase):
   shouldBreakMaskChain: bool,
   booleanOperation: number,
   edited: bool,
-  path: SketchPath
+  path: SketchPathOptional
   """
   CLASS = 'shapePath'
   ATTRS = {
@@ -1174,8 +1181,8 @@ class SketchShapePath(SketchBase):
     'layerListExpandedType': (asInt, 0),
     'name': (asString, ''),
     'nameIsFixed': (asBool, False),
-    'name': (asString, ''),
-    'nameIsFixed': (asBool, False),
+    'resizing': (asBool, False),
+    'path': (SketchPathOptional, {}),
   }
 
 class SketchArtboard(SketchLayer):
@@ -1393,8 +1400,9 @@ class SketchRectangle(SketchBase):
   shouldBreakMaskChain: bool,
   edited: bool,
   isClosed: bool,
+  pointRadiusBehaviour: number,
   points: CurvePointList,
-  path: SketchPath,
+  path: SketchPathOptional,
   fixedRadius: number,
   hasConvertedToNewRoundCorners: bool
   """
@@ -1418,7 +1426,8 @@ class SketchRectangle(SketchBase):
     'shouldBreakMaskChain': (asBool, False),
     'edited': (asBool, False),
     'isClosed': (asBool, True),
-    'path': (SketchPath, None),
+    'pointRadiusBehaviour': (asInt, 0),
+    'path': (SketchPathOptional, {}),
     'points': (SketchCurvePointList, []),
     'fixedRadius': (asNumber, 0),
     'hasConvertedToNewRoundCorners': (asBool, True)
@@ -1442,7 +1451,7 @@ class SketchOval(SketchBase):
   shouldBreakMaskChain: bool,
   booleanOperation: number,
   edited: bool,
-  path: SketchPath  
+  path: SketchPathOptional,  
   """
   CLASS = 'oval'
   ATTRS = {
@@ -1466,6 +1475,7 @@ class SketchOval(SketchBase):
     'isClosed': (asBool, True),
     'pointRadiusBehaviour': (asInt, 1),
     'points': (SketchCurvePointList, []),
+    'path': (SketchPathOptional, {}),
   }
 
 
@@ -1487,7 +1497,7 @@ class SketchStar(SketchBase):
   shouldBreakMaskChain: bool,
   booleanOperation: number,
   edited: bool,
-  path: SketchPath  
+  path: SketchPathOptional,  
   """
   CLASS = 'star'
   ATTRS = {
@@ -1508,6 +1518,7 @@ class SketchStar(SketchBase):
     'rotation': (asNumber, 0),
     'shouldBreakMaskChain': (asBool, False),
     'edited': (asBool, False),
+    'path': (SketchPathOptional, {}),
     'isClosed': (asBool, True),
     'pointRadiusBehaviour': (asInt, 1),
     'points': (SketchCurvePointList, []),
@@ -1531,7 +1542,7 @@ class SketchPolygon(SketchBase):
   shouldBreakMaskChain: bool,
   booleanOperation: number,
   edited: bool,
-  path: SketchPath  
+  path: SketchPathOptional  
   """
   CLASS = 'polygon'
   ATTRS = {
@@ -1553,6 +1564,7 @@ class SketchPolygon(SketchBase):
     'shouldBreakMaskChain': (asBool, False),
     'edited': (asBool, False),
     'isClosed': (asBool, True),
+    'path': (SketchPathOptional, {}),
     'pointRadiusBehaviour': (asInt, 1),
     'points': (SketchCurvePointList, []),
   }
