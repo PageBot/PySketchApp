@@ -62,6 +62,8 @@ POINT_ORIGIN = '{0, 0}'
 BLACK_COLOR = dict(red=0, green=0, blue=0, alpha=1)
 DEFAULT_FONT = 'Verdana'
 DEFAULT_FONTSIZE = 12
+DEFAULT_WIDTH = DEFAULT_HEIGHT = 100
+DEFAULT_NAME = 'Untitled'
 
 APP_VERSION = "51.3"
 APP_ID = 'com.bohemiancoding.sketch3'
@@ -1125,7 +1127,8 @@ class SketchShapeGroup(SketchLayer):
     'hasClickThrough': (asBool, False),
     'clippingMaskMode': (asInt, 0),
     'hasClippingMask': (asBool, False),
-    'windingRule': (asInt, 1)
+    'windingRule': (asInt, 1),
+    'layers': (asList, []),
   }
 
 class SketchPath(SketchBase):

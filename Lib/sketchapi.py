@@ -45,7 +45,8 @@ class SketchApi:
 
         >>> api = SketchApi()
         >>> api.selectLayer(name='Artboard 1')
-        >>> api.rect(100, 100, 200, 200)
+        <artboard name=Artboard 1>
+        >>> api.rect(x=100, y=110, width=200, height=210, name='Rectangle')
         >>> api.save('_export/Text.sketch')
         >>> api.sketchFile
         <sketchFile>
@@ -67,9 +68,9 @@ class SketchApi:
         >>> api.selectPage(0)
         <page name=Page 1>
         >>> api.selectLayer(name='Artboard 1')
-        <artboard name=Artboard 1 frame=(x=48 y=-291 w=576 h=783)>
-        >>> api.rect(0, 0, 100, 100)
-
+        <artboard name=Artboard 1>
+        >>> api.rect(x=0, y=0, width=100, height=100)
+        >>> api.save('_export/Text2.sketch')
         """
         self.page = page = self.sketchFile.orderedPages[index]
         return page
@@ -81,9 +82,9 @@ class SketchApi:
         >>> api = SketchApi()
         >>> page = api.selectPage(0)
         >>> api.selectLayer(name='Artboard 1')
-        <artboard name=Artboard 1 frame=(x=48 y=-291 w=576 h=783)>
+        <artboard name=Artboard 1>
         >>> api.selectLayer(pattern='board')
-        <artboard name=Artboard 1 frame=(x=48 y=-291 w=576 h=783)>
+        <artboard name=Artboard 1>
         """
         if self.page is None:
             self.page = self.   selectPage(0)
@@ -132,22 +133,33 @@ class SketchApi:
     def oval(self, x, y, w, h):
         pass
 
-    def rect(self, x, y, w, h):
+    def rect(self, x=None, y=None, width=None, height=None, frame=None,
+            name=None, **kwargs):
         """Draw the rectangle with current fill and stroke."""
-
-        frame = dict(_class='rect', x=x, y=y, width=w, height=h)
-        d = dict(frame=frame)
-        g = SketchShapeGroup(d, parent=self.layer)
+        if frame is None:
+            if width is None:
+                width = DEFAULT_WIDTH
+            if height is None:
+                height = DEFAULT_HEIGHT
+            frame = dict(_class='rect', x=x or 0, y=y or 0, width=width, height=height)
+        width = frame['width']
+        height = frame['height']
+        if name is None:
+            name = DEFAULT_NAME
+        g = SketchShapeGroup(parent=self.layer, frame=frame, name=name, 
+            do_objectID=newObjectID(), **kwargs)
         g.do_objectID = newObjectID()
         self.layer.layers.append(g)
 
-        frame = dict(_class='rect', x=0, y=0, width=w, height=h)
-        d = dict(frame=frame)
-        r = SketchRect(d, parent=g)
-        r.do_objectID = newObjectID()
-
-        g.layers = [r]
-
+        # 
+        rFrame = dict(_class='rect', x=0, y=0, width=width, height=height)
+        r = SketchRectangle(parent=g, frame=rFrame, do_objectID=newObjectID(),
+            points=points, name='Path')
+        # TODO: MAKE POINTS HERE
+        #r.points = (
+        #    SketchCurvePoint()
+        #)
+        g.layers.append(r)
     def line(self, p1, p2):
         pass
 
