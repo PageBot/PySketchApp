@@ -303,32 +303,41 @@ def SketchCurvePointList(curvePointList, parent=None):
     l.append(SketchCurvePoint(parent=parent, **curvePoint))
   return l
 
+def SketchPointString(v, parent=None):
+  """Sketch files keep points and rectangles as string. Decompose 
+  them here, before creating a real SketchPoint instance.
+
+  >>> SketchPointString('{0, 0}')
+  <point x=0.0 y=0.0>
+  >>> SketchPointString('{0000021, -12345}')
+  <point x=21.0 y=-12345.0>
+  >>> SketchPointString('{10.05, -10.66}')
+  <point x=10.05 y=-10.66>
+  
+  """
+  sx, sy = POINT_PATTERN.findall(v)[0]
+  return SketchPoint(parent=parent, x=asNumber(sx), y=asNumber(sy))
+
 class SketchPoint(SketchBase):
   """Interpret the {x,y} string into a point2D.
 
-  >>> SketchPoint(xy='{0, 0}')
-  <point x=0.0 y=0.0>
-  >>> SketchPoint(xy='{0000021, -12345}')
-  <point x=21.0 y=-12345.0>
-  >>> SketchPoint(xy='{10.05, -10.66}')
+  >>> SketchPoint(x=10, y=20)
+  <point x=10 y=20>
+  >>> SketchPoint(x=21, y=-12345)
+  <point x=21 y=-12345>
+  >>> SketchPoint(x=10.05, y=-10.66)
   <point x=10.05 y=-10.66>
   """
   REPR_ATTRS = ['x', 'y'] # Attributes to be show in __repr__
   CLASS = 'point'
-  ATTRS = {
-    'x': (asNumber, 0),
-    'y': (asNumber, 0),
-  }
+
   def __init__(self, parent=None, **kwargs):
     self._class = self.CLASS
     self.parent = parent
-    for attrName, value in kwargs.items():
-      if attrName not in self.ATTRS:
-        setattr(self, attrName, value)
 
-    sx, sy = POINT_PATTERN.findall(kwargs.get('xy', POINT_ORIGIN))[0]
-    self.x = asNumber(sx)
-    self.y = asNumber(sy)
+    self.x = self.y = 0
+    for attrName, value in kwargs.items():
+      setattr(self, attrName, value)
 
   def asJson(self):
     return '{%s, %s}' % (self.x, self.y)
@@ -350,12 +359,12 @@ class SketchCurvePoint(SketchBase):
   ATTRS = {
     'do_objectID': (asId, None),
     'cornerRadius': (asNumber, 0),
-    'curveFrom': (SketchPoint, POINT_ORIGIN),
+    'curveFrom': (SketchPointString, POINT_ORIGIN),
     'curveMode': (asInt, 1),
-    'curveTo': (SketchPoint, POINT_ORIGIN),
+    'curveTo': (SketchPointString, POINT_ORIGIN),
     'hasCurveFrom': (asBool, False),
     'hasCurveTo': (asBool, False),
-    'point': (SketchPoint, POINT_ORIGIN),
+    'point': (SketchPointString, POINT_ORIGIN),
   }
 
 class SketchImageCollection(SketchBase):
@@ -494,11 +503,11 @@ class SketchGradient(SketchBase):
   CLASS = 'gradient'
   ATTRS = {
     'elipseLength': (asNumber, 0),
-    'from_': (SketchPoint, POINT_ORIGIN),  # Initilaizes to (0, 0)
+    'from_': (SketchPointString, POINT_ORIGIN),  # Initilaizes to (0, 0)
     'gradientType': (asInt, 0),
     'shouldSmoothenOpacity': (asBool, True),
     'stops': (SketchGradientStopList, []),
-    'to_': (SketchPoint, POINT_ORIGIN),
+    'to_': (SketchPointString, POINT_ORIGIN),
   }
 
 class SketchGraphicsContextSettings(SketchBase):
