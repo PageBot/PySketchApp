@@ -53,6 +53,9 @@ PREVIEWS_JSON = 'previews/' # Internal path for preview images
 
 MS_IMMUTABLE_PAGE = 'MSImmutablePage' # MSJSONFileReference._ref_class value
 
+# Translating Python-valid attribute names to JSON names for Sketch file.
+JSON_ATTR_NAMES = dict(_from='from', _to='to')
+
 # Defaults 
 BASE_FRAME = {}
 POINT_ORIGIN = '{0, 0}'
@@ -76,7 +79,7 @@ type FilePathString = string
 
 '''
 
-POINT_PATTERN = re.compile('\{([0-9\.\-]*), ([0-9\.\-]*)\}')
+POINT_PATTERN = re.compile('\{([e0-9\.\-]*), ([e0-9\.\-]*)\}')
   # type SketchPositionString = string // '{0.5, 0.67135115527602085}'
 
 def newObjectID():
@@ -146,8 +149,11 @@ class SketchBase:
         if name not in self.ATTRS:
           setattr(self, name, value)
     for name, (m, value) in self.ATTRS.items(): # Create attribute, using method or class
-      if name in kwargs:
+      jsonName = JSON_ATTR_NAMES.get(name, name)
+      if name in kwargs: # Valid if "_from" or "_to" are used as direct attribute names.
         value = kwargs[name]
+      elif jsonName in kwargs: # In case "from" and "to" are used
+        value = kwargs[jsonName]
       if isclass(m):
         if not isinstance(value, dict):
           value = {name: value}
@@ -217,6 +223,8 @@ class SketchBase:
     d = {}
     for attrName in self.ATTRS.keys():
       attr = getattr(self, attrName)
+      # Translate Python name to JSON name
+      attrJsonName = JSON_ATTR_NAMES.get(attrName, attrName)
       if isinstance(attr, (list, tuple)):
         l = [] 
         for e in attr:
@@ -229,7 +237,7 @@ class SketchBase:
         attr = attr.asJson()
       if attr is not None:
         assert isinstance(attr, (dict, int, float, list, tuple, str)), attr
-        d[attrName] = attr
+        d[attrJsonName] = attr
     if not d:
       return None
     if self.CLASS is not None:
@@ -303,20 +311,21 @@ def SketchCurvePointList(curvePointList, parent=None):
     l.append(SketchCurvePoint(parent=parent, **curvePoint))
   return l
 
-def SketchPointString(v, parent=None):
+def SketchPositionString(v, parent=None):
   """Sketch files keep points and rectangles as string. Decompose 
   them here, before creating a real SketchPoint instance.
 
-  >>> SketchPointString('{0, 0}')
+  >>> SketchPositionString('{0, 0}')
   <point x=0.0 y=0.0>
-  >>> SketchPointString('{0000021, -12345}')
+  >>> SketchPositionString('{0000021, -12345}')
   <point x=21.0 y=-12345.0>
-  >>> SketchPointString('{10.05, -10.66}')
+  >>> SketchPositionString('{10.05, -10.66}')
   <point x=10.05 y=-10.66>
   
   """
-  sx, sy = POINT_PATTERN.findall(v)[0]
-  return SketchPoint(parent=parent, x=asNumber(sx), y=asNumber(sy))
+  sxy = POINT_PATTERN.findall(v)
+  assert len(sxy) == 1 and len(sxy[0]) == 2, (sxy, v)
+  return SketchPoint(parent=parent, x=asNumber(sxy[0][0]), y=asNumber(sxy[0][1]))
 
 class SketchPoint(SketchBase):
   """Interpret the {x,y} string into a point2D.
@@ -348,9 +357,9 @@ class SketchCurvePoint(SketchBase):
     _class: 'curvePoint',
     do_objectID: UUID,
     cornerRadius: number,
-    curveFrom: SketchPositionString, --> Point
+    curveFrom: SketchPositionString, --> SketchPoint
     curveMode: number,
-    curveTo: SketchPositionString, --> Point
+    curveTo: SketchPositionString, --> SketchPoint
     hasCurveFrom: bool,
     hasCurveTo: bool,
     point: SketchPositionString --> Point
@@ -359,12 +368,12 @@ class SketchCurvePoint(SketchBase):
   ATTRS = {
     'do_objectID': (asId, None),
     'cornerRadius': (asNumber, 0),
-    'curveFrom': (SketchPointString, POINT_ORIGIN),
+    'curveFrom': (SketchPositionString, POINT_ORIGIN),
     'curveMode': (asInt, 1),
-    'curveTo': (SketchPointString, POINT_ORIGIN),
+    'curveTo': (SketchPositionString, POINT_ORIGIN),
     'hasCurveFrom': (asBool, False),
     'hasCurveTo': (asBool, False),
-    'point': (SketchPointString, POINT_ORIGIN),
+    'point': (SketchPositionString, POINT_ORIGIN),
   }
 
 class SketchImageCollection(SketchBase):
@@ -503,11 +512,11 @@ class SketchGradient(SketchBase):
   CLASS = 'gradient'
   ATTRS = {
     'elipseLength': (asNumber, 0),
-    'from_': (SketchPointString, POINT_ORIGIN),  # Initilaizes to (0, 0)
+    '_from': (SketchPositionString, POINT_ORIGIN),  # Initilaizes to (0, 0)
     'gradientType': (asInt, 0),
     'shouldSmoothenOpacity': (asBool, True),
     'stops': (SketchGradientStopList, []),
-    'to_': (SketchPointString, POINT_ORIGIN),
+    '_to': (SketchPositionString, POINT_ORIGIN),
   }
 
 class SketchGraphicsContextSettings(SketchBase):
@@ -611,16 +620,23 @@ class SketchShadow(SketchBase):
     'spread': (asNumber, 0),  
   }
 
-'''
-type SketchBlur = {
+class SketchBlur(SketchBase):
+  """
   _class: 'blur',
   isEnabled: bool,
   center: SketchPositionString,
   motionAngle: number,
   radius: number,
-  type: number
-}
-'''
+  _type: number
+  """
+  CLASS = 'blur'
+  ATTRS = {
+    'isEnabled': (asBool, True),
+    'center': (SketchPositionString, POINT_ORIGIN),
+    'motionAngle': (asNumber, 0),
+    'radius': (asNumber, 0),
+    'type': (asInt, 0),
+  }
 
 class SketchEncodedAttributes(SketchBase):
   """
