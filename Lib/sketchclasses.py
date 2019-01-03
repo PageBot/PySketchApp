@@ -157,9 +157,12 @@ class SketchBase:
       elif jsonName in kwargs: # In case "from" and "to" are used
         value = kwargs[jsonName]
       if isclass(m):
-        if not isinstance(value, dict):
+        if isinstance(value, m):
+          pass # Already SketchBase instance, leave untouched
+        elif not isinstance(value, dict):
           value = {name: value}
-        value = m(parent=self, **value)
+        else:
+          value = m(parent=self, **value)
       elif isfunction(m):
         value = m(value, parent=self)
       setattr(self, name, value)
@@ -430,15 +433,17 @@ class SketchBorder(SketchBase):
   >>> color = SketchColor(red=1)
   >>> color
   <color red=1 green=0 blue=0 alpha=0>
-  >>> border = SketchBorder(color=color)
+  >>> border = SketchBorder(color=color, fillType=1)
   >>> border.color
   <color red=1 green=0 blue=0 alpha=0>
+  >>> border.fillType
+  1
   """
   CLASS = 'border'
   ATTRS = {
     'isEnabled': (asBool, True),
     'color': (SketchColor, None),
-    'fillType': (asNumber, 0),
+    'fillType': (asInt, 0),
     'position': (asInt, 0),
     'thickness': (asNumber, 1)
   }
@@ -483,10 +488,10 @@ class SketchGradientStop(SketchBase):
   >>> color = SketchColor(blue=1) 
   >>> gs = SketchGradientStop(color=color, position=1)
   >>> gs.color, gs.position
-  (<color red=0 green=0 blue=1 alpha=0>, 1)
+  (<color red=0 green=0 blue=1 alpha=0>, 1.0)
   >>> gs = SketchGradientStop()
   >>> gs.color, gs.position
-  (<color red=0 green=0 blue=0 alpha=1>, 0)
+  (<color red=0 green=0 blue=0 alpha=1>, 0.0)
   """
   CLASS = 'gradientStop'
   ATTRS = {
@@ -1635,8 +1640,8 @@ class SketchDocument(SketchBase):
     'assets': (SketchAssetsCollection, []),
     'colorSpace': (asInt, 0),
     'currentPageIndex': (asInt, 0),
-    #'enableLayerInteraction': (asBool, False),
-    #'enableSliceInteraction': (asBool, False),
+    #'enableLayerInteraction': (asBool, False), ??
+    #'enableSliceInteraction': (asBool, False), ??
     'foreignLayerStyles': (asList, []),
     'foreignSymbols': (asList, []),
     'foreignTextStyles': (asList, []),

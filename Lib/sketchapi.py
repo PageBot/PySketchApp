@@ -133,15 +133,15 @@ class SketchApi:
     def oval(self, x, y, w, h):
         pass
 
-    def rect(self, x=None, y=None, width=None, height=None, frame=None,
-            name=None, **kwargs):
+    def rect(self, x=None, y=None, w=None, h=None, name=None, **kwargs):
         """Draw the rectangle with current fill and stroke."""
-        if frame is None:
-            if width is None:
-                width = DEFAULT_WIDTH
-            if height is None:
-                height = DEFAULT_HEIGHT
-            frame = dict(_class='rect', x=x or 0, y=y or 0, width=width, height=height)
+        if w is None:
+            w = DEFAULT_WIDTH
+        if h is None:
+            h = DEFAULT_HEIGHT
+        frame = SketchRect(x=x or 0, y=y or 0, width=w, height=h)
+        print(frame)
+        return
         width = frame['width']
         height = frame['height']
         if name is None:
