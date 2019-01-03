@@ -43,6 +43,8 @@ class SketchApi:
     def save(self, path):
         """Save the current self.skethFile as sketch file.
 
+        >>> if not os.path.exists('_export'):
+        ...     os.mkdir('_export')
         >>> api = SketchApi()
         >>> api.selectLayer(name='Artboard 1')
         <artboard name=Artboard 1>
@@ -140,18 +142,11 @@ class SketchApi:
         if h is None:
             h = DEFAULT_HEIGHT
         frame = SketchRect(x=x or 0, y=y or 0, width=w, height=h)
-        print(frame)
-        return
-        width = frame['width']
-        height = frame['height']
-        if name is None:
-            name = DEFAULT_NAME
-        g = SketchShapeGroup(parent=self.layer, frame=frame, name=name, 
-            do_objectID=newObjectID(), **kwargs)
-        g.do_objectID = newObjectID()
-        self.layer.layers.append(g)
+        name = name or DEFAULT_NAME
+        g = SketchShapeGroup(do_objectID=newObjectID(), frame=frame, name=name, **kwargs)
+        self.layer.append(g)
 
-        rFrame = dict(_class='rect', x=0, y=0, width=width, height=height)
+        rFrame = dict(_class='rect', x=0, y=0, width=w, height=h)
         r = SketchRectangle(parent=g, frame=rFrame, do_objectID=newObjectID(),
             name='Path')
         r.points = [

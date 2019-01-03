@@ -1064,6 +1064,15 @@ class SketchLayer(SketchBase):
     """In case the layer has layers, then answer them by index."""
     return self.layers[layerIndex]
 
+  def append(self, layer):
+    """Add layer to self.layers and set layer.parent to self.
+    TODO: If layer.parent is already set, then remove it from its parent
+    TODO: If layer is already in self.layers, then move it to end of the list.
+    """
+    assert isinstance(layer, SketchBase)
+    self.layers.append(layer)
+    layer.parent = self
+    
   def find(self, _class=None, name=None, pattern=None, found=None):
     """Check if self matches class, name or pattern. Then search for
     all layers in self.layers.
