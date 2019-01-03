@@ -23,6 +23,7 @@ class SketchAppReader(SketchAppBase):
     """Read a sketch file and answer a SketchDocument that contains the interpreted data.
 
     >>> path = '../Test/TestImage.sketch'
+    >>> #path = '../Test/TestStar.sketch'
     >>> reader = SketchAppReader()
     >>> skf = reader.read(path)
     >>> skf.document.do_objectID is not None
@@ -67,7 +68,7 @@ class SketchAppReader(SketchAppBase):
 
     # Set general document info
     if DOCUMENT_JSON in zipInfo:
-      fc = zf.read(DOCUMENT_JSON)
+      fc = zf.read(DOCUMENT_JSON).decode("utf-8")
       d = json.loads(fc)
       skf.document = SketchDocument(parent=skf, **d)
     else:
@@ -75,14 +76,14 @@ class SketchAppReader(SketchAppBase):
     
     # Set general user info
     if USER_JSON in zipInfo:
-      fc = zf.read(USER_JSON)
+      fc = zf.read(USER_JSON).decode("utf-8")
       d = json.loads(fc)
       skf.user = SketchUser(parent=skf, **d)
        
     # Read pages and build self.imagesId2Path dictionary, as we find sId-->name relations.
     for key in zipInfo:
       if key.startswith(PAGES_JSON): # This much be a page.
-        fc = zf.read(key)
+        fc = zf.read(key).decode("utf-8")
         sketchPageInfo = json.loads(fc)
         # Reading pages/layers will find all docment images, and store them in self.imagesId2Path
         sketchPage = SketchPage(parent=skf, **sketchPageInfo)
@@ -90,7 +91,7 @@ class SketchAppReader(SketchAppBase):
 
     # Set general meta info
     if META_JSON in zipInfo:
-      fc = zf.read(META_JSON)
+      fc = zf.read(META_JSON).decode("utf-8")
       d = json.loads(fc)
       skf.meta = SketchMeta(parent=skf, **d)
  
