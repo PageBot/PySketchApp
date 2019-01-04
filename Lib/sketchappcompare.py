@@ -29,24 +29,34 @@ IGNORE = ['userInfo']
 if not CHECK_ID:
     IGNORE.append('do_objectID')
 
-def _compare(d1, d2, result):
+def _compare(d1, d2, result, path=None):
+    if path is None:
+        path = ''
 
-        if isinstance(v1, SketchBase):
-            _compare(v1, v2, result)
-        elif isinstance(v1, (list, tuple)):
-            for index, vv1 in enumerate(v1):
-                vv2 = v2[index]if 
-                _compare(vv1, vv2, result)
-        elif v1 != v2:
-            print(attrName, v1, v2)
+    if isinstance(d1, SketchBase):
+        if not isinstance(d2, SketchBase):
+            result.append("%s is not SketchBase instance" % d2)
+        else:
+            for attrName in d1.ATTRS:
+                if attrName in IGNORE:
+                    continue
+                v1 = getattr(d1, attrName)
+                v2 = getattr(d2, attrName)
+                _compare(v1, v2, result, path + '/' + attrName)
+    elif isinstance(d1, (list, tuple)):
+        if not isinstance(d2,  (list, tuple)):
+            result.append("%s is not List/Tuple instance" % d2)
+        elif (len(d1) != len(d2)):
+            result.append("%s Lists not same length %d - %d" % (path, d1, d2))
+        else:
+            for index, dd1 in enumerate(d1):
+                dd2 = d2[index]
+                _compare(dd1, dd2, result)
+    elif d1 != d2:
+        result.append("%s: %s %s" % (path, d1, d2))
 
-    for attrName in d1.ATTRS:
-        v1 = getattr(d1, attrName)
-        v2 = getattr(d2, attrName)
-        if attrName in IGNORE:
-            continue
 
-def sketchCompare(path1, path2):
+def sketchCompare(sketchFile1, sketchFile2):
     """
     >>> from sketchappreader import SketchAppReader
     >>> testFileNames = ('TestImage.sketch',
@@ -59,19 +69,17 @@ def sketchCompare(path1, path2):
     >>> for fileName in testFileNames:
     ...     reader = SketchAppReader()
     ...     readPath = '../Test/' + fileName
-    ...     skf = reader.read(readPath)
+    ...     skf1 = reader.read(readPath)
     ...     writePath = readPath.replace('.sketch', 'Write.sketch')
     ...     writer = SketchAppWriter()
-    ...     writer.write(writePath, skf)
-    ...     sketchCompare(readPath, writePath) # Should not give any differences
+    ...     writer.write(writePath, skf1)
+    ...     skf2 = reader.read(writePath)
+    ...     sketchCompare(skf1, skf2) # Should not give any differences
     """
-    reader = SketchAppReader()
-    skf1 = reader.read(path1)
-    skf2 = reader.read(path2)
     result = []
-    _compare(skf1.document, skf2.document, result)
-    _compare(skf1.user, skf2.user, result)
-    _compare(skf1.meta, skf2.meta, result)
+    _compare(sketchFile1.document, sketchFile2.document, result)
+    _compare(sketchFile1.user, sketchFile2.user, result)
+    _compare(sketchFile1.meta, sketchFile2.meta, result)
 
     if result:
         return result
