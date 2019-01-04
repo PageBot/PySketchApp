@@ -108,14 +108,14 @@ class SketchBase:
   REPR_ATTRS = ['name'] # Attributes to be show in __repr__
   ATTRS = {}
   
-  def __init__(self, parent=None, **kwargs):
+  def __init__(self, **kwargs):
     """Using **kwargs, the attributes can be set as name values, as well
     being used from dictionaries in the Sketch JSON file. 
 
     >>> 
     """
     self._class = self.CLASS # Forces values to default, in case it is not None
-    self.parent = parent # Save reference to parent layer as weakref.
+    self.parent = None # Save reference to parent layer as weakref.
     self.setAttributes(**kwargs)
 
   def setAttributes(self, **kwargs):
@@ -163,9 +163,9 @@ class SketchBase:
         elif not isinstance(value, dict):
           value = {name: value}
         else:
-          value = m(parent=self, **value)
+          value = m(**value)
       elif isfunction(m):
-        value = m(value, parent=self)
+        value = m(value)
       setattr(self, name, value)
 
   def __repr__(self):
@@ -252,7 +252,7 @@ class SketchBase:
     return d
 
 
-def asRect(sketchNestedPositionString, parent=None):
+def asRect(sketchNestedPositionString):
   """
   type SketchNestedPositionString = string // '{{0, 0}, {75.5, 15}}'
   """
@@ -261,64 +261,64 @@ def asRect(sketchNestedPositionString, parent=None):
   (x, y), (w, h) = POINT_PATTERN.findall(sketchNestedPositionString)
   return x, y, w, h
 
-def asColorNumber(v, parent=None):
+def asColorNumber(v):
   try:
     return min(1, max(0, float(v)))
   except ValueError:
     return 0
 
-def asNumber(v, parent=None):
+def asNumber(v):
   try:
     return float(v)
   except ValueError:
     return 0
 
-def asInt(v, parent=None):
+def asInt(v):
   try:
     return int(v)
   except ValueError:
     return 0
 
-def asBool(v, parent=None):
+def asBool(v):
   return bool(v)
 
-def asId(v, parent=None):
+def asId(v):
   return v
 
-def asString(v, parent=None):
+def asString(v):
   return str(v)
 
-def asColorList(v, parent=None):
+def asColorList(v):
   return []
 
-def asGradientList(v, parent=None):
+def asGradientList(v):
   return []
 
-def asImageCollection(v, parent=None):
+def asImageCollection(v):
   return []
 
-def asImages(v, parent=None):
+def asImages(v):
   return []
 
-def asDict(v, parent=None):
+def asDict(v):
   return {}
 
-def asList(v, parent=None):
+def asList(v):
   return list(v)
 
-def FontList(v, parent=None):
+def FontList(v):
   return []
 
-def HistoryList(v, parent=None):
+def HistoryList(v):
   return ['NONAPPSTORE.57544']
 
-def SketchCurvePointList(curvePointList, parent=None):
+def SketchCurvePointList(curvePointList):
   l = []
   for curvePoint in curvePointList:
-    l.append(SketchCurvePoint(parent=parent, **curvePoint))
+    l.append(SketchCurvePoint(**curvePoint))
   return l
 
-def SketchPositionString(v, parent=None):
+def SketchPositionString(v):
   """Sketch files keep points and rectangles as string. Decompose 
   them here, before creating a real SketchPoint instance.
 
@@ -332,7 +332,7 @@ def SketchPositionString(v, parent=None):
   """
   sxy = POINT_PATTERN.findall(v)
   assert len(sxy) == 1 and len(sxy[0]) == 2, (sxy, v)
-  return SketchPoint(parent=parent, x=asNumber(sxy[0][0]), y=asNumber(sxy[0][1]))
+  return SketchPoint(x=asNumber(sxy[0][0]), y=asNumber(sxy[0][1]))
 
 class SketchPoint(SketchBase):
   """Interpret the {x,y} string into a point2D.
@@ -347,9 +347,8 @@ class SketchPoint(SketchBase):
   REPR_ATTRS = ['x', 'y'] # Attributes to be show in __repr__
   CLASS = 'point'
 
-  def __init__(self, parent=None, **kwargs):
+  def __init__(self, **kwargs):
     self._class = self.CLASS
-    self.parent = parent
 
     self.x = self.y = 0
     for attrName, value in kwargs.items():
@@ -500,11 +499,16 @@ class SketchGradientStop(SketchBase):
     'position': (asNumber, 0), 
   }
 
-def SketchGradientStopList(dd, parent=None):
+def SketchGradientStopList(dd):
   l = []
   for d in dd:
-    l.append(SketchGradientStop(parent=parent, **d))
+    l.append(SketchGradientStop(**d))
   return l
+
+def sketchGradient(parent=None, **d):
+  if d:
+    return SketchGradient(parent=parent, **d)
+  return None
 
 class SketchGradient(SketchBase):
   """
@@ -553,11 +557,17 @@ type SketchInnerShadow = {
 }
 '''
 
-def SketchMSJSONFileReferenceList(refs, parent=None):
+def SketchMSJSONFileReferenceList(refs):
   l = []
   for ref in refs:
-    l.append(SketchMSJSONFileReference(parent=parent, **ref))
+    if refs:
+      l.append(SketchMSJSONFileReference(**ref))
   return l
+
+def sketchMSJSONFileReference(refs):
+  if refs: # Value data, otherwise answer None
+    return SketchMSJSONFileReference(**refs)
+  return None
 
 class SketchMSJSONFileReference(SketchBase):
   """
@@ -571,10 +581,10 @@ class SketchMSJSONFileReference(SketchBase):
     '_ref': (asString, ''),
   }
 
-def SketchFillList(sketchFills, parent=None):
+def SketchFillList(sketchFills):
   l = []
   for fill in sketchFills:
-    l.append(SketchFill(parent=parent, **fill))
+    l.append(SketchFill(**fill))
   if l:
     return l
   return None # Ignore in output
@@ -587,7 +597,7 @@ class SketchFill(SketchBase):
   contextSettings: SketchGraphicsContextSettings
   image: SketchMSJSONFileReferenceList,
   fillType: number,
-  gradient: SketchGradient,
+  gradient: sketchGradient,
   noiseIndex: number,
   noiseIntensity: number,
   patternFillType: number,
@@ -599,8 +609,8 @@ class SketchFill(SketchBase):
     'color': (SketchColor, BLACK_COLOR),
     'contextSettings': (SketchGraphicsContextSettings, {}),
     'fillType': (asInt, 0),
-    'image': (SketchMSJSONFileReference, None),
-    'gradient': (SketchGradient, None),
+    'image': (sketchMSJSONFileReference, None), # Optional ignore otherwise
+    'gradient': (sketchGradient, None), # Optional, ignore otherwise
     'noiseIndex': (asNumber, 0),
     'noiseIntensity': (asNumber, 0),
     'patternFillType': (asNumber, 1),
@@ -730,18 +740,18 @@ class SketchColorControls(SketchBase):
     'saturation': (asNumber, 1),
   }
 
-def SketchBordersList(sketchBorders, parent=None):
+def SketchBordersList(sketchBorders):
   l = []
   for sketchBorder in sketchBorders:
-    l.append(SketchBorder(parent=parent, **sketchBorder))
+    l.append(SketchBorder(**sketchBorder))
   if l:
     return l
   return None
 
-def SketchShadowsList(sketchShadows, parent=None):
+def SketchShadowsList(sketchShadows):
   l = []
   for sketchShadow in sketchShadows:
-    l.append(SketchShadow(parent=parent, **sketchShadow))
+    l.append(SketchShadow(**sketchShadow))
   if l:
     return l
   return None
@@ -793,10 +803,10 @@ class SketchSharedStyle(SketchBase):
     'value': (SketchStyle, None),
   }
 
-def SketchExportFormatList(exporFormats, parent=None):
+def SketchExportFormatList(exporFormats):
   l = []
   for exportFormat in exporFormats:
-    l.append(SketchExportFormat(parent=parent, **exportFormat))
+    l.append(SketchExportFormat(**exportFormat))
   return l
 
 class SketchExportFormat(SketchBase):
@@ -965,10 +975,10 @@ class SketchStringAttribute(SketchBase):
     'attributes': (SketchAttributes, None),
   }
 
-def SketchStringAttributeList(stringAttributes, parent=None):
+def SketchStringAttributeList(stringAttributes):
   l = []
   for stringAttribute in stringAttributes:
-    l.append(SketchStringAttribute(parent=parent, **stringAttribute))
+    l.append(SketchStringAttribute(**stringAttribute))
   return l
 
 class SketchAttributedString(SketchBase):
@@ -1053,13 +1063,13 @@ class SketchText(SketchBase):
 
 class SketchLayer(SketchBase):
   """Abstract base layer class if there is an "self.layers" attributes."""
-  def __init__(self, parent=None, **kwargs):
-    SketchBase.__init__(self, parent=parent, **kwargs)
+  def __init__(self, **kwargs):
+    SketchBase.__init__(self, **kwargs)
     self._class = self.CLASS
     self.layers = [] # List of Sketch element instances.
     for layerDict in kwargs.get('layers', []):
-      # Create new layer, set self as its weakref parent and add to self.layers list.
-      self.layers.append(SKETCHLAYER_PY[layerDict['_class']](parent=self, **layerDict))
+      # Create new layer
+      self.layers.append(SKETCHLAYER_PY[layerDict['_class']](**layerDict))
 
   def __getitem__(self, layerIndex):
     """In case the layer has layers, then answer them by index."""
@@ -1159,8 +1169,8 @@ class SketchPath(SketchBase):
     'points': (SketchCurvePointList, []),
   }
 
-def SketchPathOptional(sketchPath, parent=None):
-  sp = SketchPath(parent=parent, **sketchPath)
+def SketchPathOptional(sketchPath):
+  sp = SketchPath(**sketchPath)
   if sp.points: # Any points, then keep it
     return sp
   return None # Otherwise ignore the pat.
@@ -1750,8 +1760,8 @@ class SketchMeta(SketchBase):
     'compatibilityVersion': (asInt, 99),
   }
 
-  def __init__(self, parent=None, **kwargs):
-    SketchBase.__init__(self, parent=parent, **kwargs)
+  def __init__(self, **kwargs):
+    SketchBase.__init__(self, **kwargs)
     self.pagesAndArtboards = {} # Dictionary of Sketch element instances.
     for pageId, page in self.root.pages.items():
       # Create page or artboard reference
@@ -1776,14 +1786,14 @@ class SketchUser(SketchBase):
   CLASS = 'user'
   ATTRS = {
   }
-  def __init__(self, parent=None, **kwargs):
-    SketchBase.__init__(self, parent=parent, **kwargs)
+  def __init__(self, **kwargs):
+    SketchBase.__init__(self, **kwargs)
     self.document = dict(pageListHeight=118)
 
   def asJson(self):
     return dict(document=dict(pageListHeight=self.document['pageListHeight']))
 
-class SketchFile:
+class SketchFile(SketchBase):
   """Holds entire data file. Top of layer.parent-->layer.parent-->sketchFile chain.
   """
   ATTRS = {

@@ -23,7 +23,7 @@ from sketchclasses import *
 from sketchappreader import SketchAppReader
 from sketchappwriter import SketchAppWriter
 
-CHECK_ID = True
+CHECK_ID = False
 
 IGNORE = ['userInfo']
 if not CHECK_ID:
@@ -44,11 +44,11 @@ def _compare(d1, d2, result, path=None):
                 v2 = getattr(d2, attrName)
                 _compare(v1, v2, result, path + '/' + attrName)
         if hasattr(d1, 'layers') != hasattr(d2, 'layers'):
-            result.append("%s does not have key %s" % (d2, dKey1))
+            result.append("%s: %s does not have key %s" % (path, d2, dKey1))
         elif hasattr(d1, 'layers'):
             for index, layer1 in enumerate(d1.layers):
                 layer2 = d2.layers[index]
-                _compare(layer1, layer2, result, path + '[%d]' % index)
+                _compare(layer1, layer2, result, path + '/layers[%d]' % index)
     elif isinstance(d1, dict):
         if not isinstance(d2, dict):
             result.append("%s: %s and %s are not both dict" % (path, d1, d2))
@@ -61,15 +61,15 @@ def _compare(d1, d2, result, path=None):
                     _compare(dd1, dd2, result, path + '/' + dKey1)
     elif isinstance(d1, (list, tuple)):
         if not isinstance(d2,  (list, tuple)):
-            result.append("%s is not list/tuple instance" % d2)
+            result.append("%s: %s is not list/tuple instance" % (path, d2))
         elif (len(d1) != len(d2)):
-            result.append("%s Lists not same length %d - %d" % (path, d1, d2))
+            result.append("%s: Lists not same length %d - %d" % (path, d1, d2))
         else:
             for index, dd1 in enumerate(d1):
                 dd2 = d2[index]
                 _compare(dd1, dd2, result, path + '[%d]' % index)
     elif d1 != d2:
-        result.append("%s: %s %s" % (path, d1, d2))
+        result.append("%s: Value %s different from %s" % (path, d1, d2))
 
 
 def sketchCompare(sketchFile1, sketchFile2, result=None):
@@ -94,14 +94,14 @@ def sketchCompare(sketchFile1, sketchFile2, result=None):
     ...     skf2 = reader.read(writePath)
     ...     result = sketchCompare(skf1, skf2, result) # Should not give any differences
     ...     if result:
-    ...         print('===', readPath)
+    ...         print('--- Difference ---', readPath)
     ...         for error in result:
     ...             if error:
     ...                 print(error)
     """
     if result is None:
         result = []
-    _compare(sketchFile1, sketchFile2ges, result)
+    _compare(sketchFile1, sketchFile2, result)
 
     return result
 
