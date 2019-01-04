@@ -65,7 +65,7 @@ DEFAULT_FONTSIZE = 12
 DEFAULT_WIDTH = DEFAULT_HEIGHT = 100
 DEFAULT_NAME = 'Untitled'
 
-APP_VERSION = "51.3"
+APP_VERSION = "53.5" # None MacOD 51.3
 APP_ID = 'com.bohemiancoding.sketch3'
 
 # SketchApp 43 files JSON types
@@ -1685,7 +1685,8 @@ class SketchPage(SketchLayer):
   + shouldBreakMaskChain: bool,
   + style: SketchStyle,
   + verticalRulerData: SketchRulerData
-  + userInfo: {}
+  + userInfo: {},
+  + clippingMaskMode: number,
 }
   """
   CLASS = 'page'
@@ -1711,6 +1712,7 @@ class SketchPage(SketchLayer):
     'verticalRulerData': (SketchRulerData, None),
     'horizontalRulerData': (SketchRulerData, None),
     'userInfo': (asDict, {}),
+    'clippingMaskMode': (asInt, 0),
   }
 
 class SketchFile:

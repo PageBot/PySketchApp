@@ -17,7 +17,18 @@
 #
 #  This api is compatible with the context builders of PageBot.
 #
-
+#  Write the Sketch classes into a valid Sketch file.
+#
+#  Inspect sketch file:
+#  https://xaviervia.github.io/sketch2json/
+#
+#  https://gist.github.com/xaviervia/edbea95d321feacaf0b5d8acd40614b2
+#  This description is not complete. 
+#  Additions made where found in the Reading specification of this context.
+#
+#  Webviewer
+#  https://github.com/AnimaApp/sketch-web-viewer
+#
 import os
 from sketchclasses import *
 from sketchappreader import SketchAppReader

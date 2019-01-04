@@ -24,6 +24,9 @@
 #  This description is not complete. 
 #  Additions made where found in the Reading specification of this context.
 #
+#  Webviewer
+#  https://github.com/AnimaApp/sketch-web-viewer
+#
 from sketchclasses import *
 
 class SketchAppWriter(SketchAppBase):
