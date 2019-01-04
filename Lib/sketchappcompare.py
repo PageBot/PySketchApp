@@ -43,23 +43,40 @@ def _compare(d1, d2, result, path=None):
                 v1 = getattr(d1, attrName)
                 v2 = getattr(d2, attrName)
                 _compare(v1, v2, result, path + '/' + attrName)
+        if hasattr(d1, 'layers') != hasattr(d2, 'layers'):
+            result.append("%s does not have key %s" % (d2, dKey1))
+        elif hasattr(d1, 'layers'):
+            for index, layer1 in enumerate(d1.layers):
+                layer2 = d2.layers[index]
+                _compare(layer1, layer2, result, path + '[%d]' % index)
+    elif isinstance(d1, dict):
+        if not isinstance(d2, dict):
+            result.append("%s: %s and %s are not both dict" % (path, d1, d2))
+        else:
+            for dKey1, dd1 in d1.items():
+                if not dKey1 in d2:
+                    result.append("%s: %s does not have key %s" % (path, d2, dKey1))
+                else:
+                    dd2 = d2[dKey1]
+                    _compare(dd1, dd2, result, path + '/' + dKey1)
     elif isinstance(d1, (list, tuple)):
         if not isinstance(d2,  (list, tuple)):
-            result.append("%s is not List/Tuple instance" % d2)
+            result.append("%s is not list/tuple instance" % d2)
         elif (len(d1) != len(d2)):
             result.append("%s Lists not same length %d - %d" % (path, d1, d2))
         else:
             for index, dd1 in enumerate(d1):
                 dd2 = d2[index]
-                _compare(dd1, dd2, result)
+                _compare(dd1, dd2, result, path + '[%d]' % index)
     elif d1 != d2:
         result.append("%s: %s %s" % (path, d1, d2))
 
 
-def sketchCompare(sketchFile1, sketchFile2):
+def sketchCompare(sketchFile1, sketchFile2, result=None):
     """
     >>> from sketchappreader import SketchAppReader
-    >>> testFileNames = ('TestImage.sketch',
+    >>> testFileNames = (
+    ...     'TestImage.sketch',
     ...     'TestRectangles.sketch',
     ...     'TestStar.sketch',
     ...     'TestPolygon.sketch',
@@ -67,6 +84,7 @@ def sketchCompare(sketchFile1, sketchFile2):
     ...     'TestABC.sketch',
     ... )
     >>> for fileName in testFileNames:
+    ...     result = []
     ...     reader = SketchAppReader()
     ...     readPath = '../Test/' + fileName
     ...     skf1 = reader.read(readPath)
@@ -74,16 +92,20 @@ def sketchCompare(sketchFile1, sketchFile2):
     ...     writer = SketchAppWriter()
     ...     writer.write(writePath, skf1)
     ...     skf2 = reader.read(writePath)
-    ...     sketchCompare(skf1, skf2) # Should not give any differences
+    ...     sketchCompare(skf1, skf2, result) # Should not give any differences
+    ...     if result:
+    ...         print('===', readPath)
+    ...         for error in result:
+    ...             print(error)
     """
-    result = []
+    if result is None:
+        result = []
+    _compare(sketchFile1.pages, sketchFile2.pages, result)
     _compare(sketchFile1.document, sketchFile2.document, result)
     _compare(sketchFile1.user, sketchFile2.user, result)
     _compare(sketchFile1.meta, sketchFile2.meta, result)
 
-    if result:
-        return result
-    return None
+    return result
 
 if __name__ == '__main__':
     import doctest

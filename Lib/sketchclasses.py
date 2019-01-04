@@ -106,7 +106,8 @@ class SketchAppBase:
 class SketchBase:
 
   REPR_ATTRS = ['name'] # Attributes to be show in __repr__
-
+  ATTRS = {}
+  
   def __init__(self, parent=None, **kwargs):
     """Using **kwargs, the attributes can be set as name values, as well
     being used from dictionaries in the Sketch JSON file. 
