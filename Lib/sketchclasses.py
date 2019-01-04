@@ -1716,62 +1716,6 @@ class SketchPage(SketchLayer):
     'clippingMaskMode': (asInt, 0),
   }
 
-class SketchFile:
-  """Holds entire data file. Top of layer.parent-->layer.parent-->sketchFile chain.
-  """
-  def __init__(self, path=None):
-    self.path = path or UNTITLED_SKETCH
-    self.pages = {}
-    self.document = None
-    self.user = None 
-    self.meta = None
-
-  def __repr__(self):
-    return '<sketchFile>'   
-
-  def find(self, _class=None, name=None, pattern=None):
-    found = []
-    for pageId, page in self.pages.items():
-      page.find(_class=_class, name=name, pattern=pattern, found=found)
-    return found
-
-  def _get_orderedPages(self):
-    """Answer a list of pages in the order of the self.document.pages"""
-    orderedPages = []
-    for pageRef in self.document.pages:
-      if pageRef._ref_class == MS_IMMUTABLE_PAGE:
-        pageId = pageRef._ref.split('/')[-1]
-        orderedPages.append(self.pages[pageId])
-    return orderedPages
-  orderedPages = property(_get_orderedPages)
-
-  def _get_imagesPath(self):
-    """Answer the _images/ path, related to self.path
-    
-    >>> SketchFile('/a/b/c/d.sketch').imagesPath
-    '/a/b/c/d_images/'
-    >>> SketchFile('d.sketch').imagesPath
-    'd_images/'
-    >>> SketchFile('a/b/c').imagesPath
-    'a/b/c/_images/'
-    >>> SketchFile().imagesPath
-    'untitled_images/'
-    """
-    path = self.path
-    if path.endswith('.' + FILETYPE_SKETCH):
-      parts = path.split('/')
-      if len(parts) > 1:
-        imagesPath = '/'.join(parts[:-1]) + '/'
-      else:
-        imagesPath = ''
-      imagesPath += (parts[-1].replace('.'+FILETYPE_SKETCH, '')) + IMAGES_PATH
-    else:
-      if not path.endswith('/'):
-        path += '/'
-      imagesPath = path + IMAGES_PATH
-    return imagesPath
-  imagesPath = property(_get_imagesPath) # Read only
-
 
 # meta.json
 class SketchMeta(SketchBase):
@@ -1838,6 +1782,69 @@ class SketchUser(SketchBase):
 
   def asJson(self):
     return dict(document=dict(pageListHeight=self.document['pageListHeight']))
+
+class SketchFile:
+  """Holds entire data file. Top of layer.parent-->layer.parent-->sketchFile chain.
+  """
+  ATTRS = {
+    'pages': (asDict, {}),
+    'document': (SketchDocument, None),
+    'user': (SketchUser, None),
+    'meta': (SketchMeta, None),
+  }
+  def __init__(self, path=None):
+    self.path = path or UNTITLED_SKETCH
+    self.pages = {}
+    self.document = None
+    self.user = None 
+    self.meta = None
+
+  def __repr__(self):
+    return '<sketchFile>'   
+
+  def find(self, _class=None, name=None, pattern=None):
+    found = []
+    for pageId, page in self.pages.items():
+      page.find(_class=_class, name=name, pattern=pattern, found=found)
+    return found
+
+  def _get_orderedPages(self):
+    """Answer a list of pages in the order of the self.document.pages"""
+    orderedPages = []
+    for pageRef in self.document.pages:
+      if pageRef._ref_class == MS_IMMUTABLE_PAGE:
+        pageId = pageRef._ref.split('/')[-1]
+        orderedPages.append(self.pages[pageId])
+    return orderedPages
+  orderedPages = property(_get_orderedPages)
+
+  def _get_imagesPath(self):
+    """Answer the _images/ path, related to self.path
+    
+    >>> SketchFile('/a/b/c/d.sketch').imagesPath
+    '/a/b/c/d_images/'
+    >>> SketchFile('d.sketch').imagesPath
+    'd_images/'
+    >>> SketchFile('a/b/c').imagesPath
+    'a/b/c/_images/'
+    >>> SketchFile().imagesPath
+    'untitled_images/'
+    """
+    path = self.path
+    if path.endswith('.' + FILETYPE_SKETCH):
+      parts = path.split('/')
+      if len(parts) > 1:
+        imagesPath = '/'.join(parts[:-1]) + '/'
+      else:
+        imagesPath = ''
+      imagesPath += (parts[-1].replace('.'+FILETYPE_SKETCH, '')) + IMAGES_PATH
+    else:
+      if not path.endswith('/'):
+        path += '/'
+      imagesPath = path + IMAGES_PATH
+    return imagesPath
+  imagesPath = property(_get_imagesPath) # Read only
+
 
 if __name__ == '__main__':
   import doctest

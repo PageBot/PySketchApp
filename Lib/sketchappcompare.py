@@ -92,18 +92,16 @@ def sketchCompare(sketchFile1, sketchFile2, result=None):
     ...     writer = SketchAppWriter()
     ...     writer.write(writePath, skf1)
     ...     skf2 = reader.read(writePath)
-    ...     sketchCompare(skf1, skf2, result) # Should not give any differences
+    ...     result = sketchCompare(skf1, skf2, result) # Should not give any differences
     ...     if result:
     ...         print('===', readPath)
     ...         for error in result:
-    ...             print(error)
+    ...             if error:
+    ...                 print(error)
     """
     if result is None:
         result = []
-    _compare(sketchFile1.pages, sketchFile2.pages, result)
-    _compare(sketchFile1.document, sketchFile2.document, result)
-    _compare(sketchFile1.user, sketchFile2.user, result)
-    _compare(sketchFile1.meta, sketchFile2.meta, result)
+    _compare(sketchFile1, sketchFile2ges, result)
 
     return result
 
