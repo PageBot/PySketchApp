@@ -105,6 +105,48 @@ def sketchCompare(sketchFile1, sketchFile2, result=None):
 
     return result
 
+def prettyPrint(d, name=None, result=None, tab=0):
+    """
+    >>> from sketchappreader import SketchAppReader
+    >>> testFileNames = (
+    ...     #'TestImage.sketch',
+    ...     'TestRectangles.sketch',
+    ...     #'TestStar.sketch',
+    ...     #'TestPolygon.sketch',
+    ...     #'TestOval.sketch',
+    ...     #'TestABC.sketch',
+    ... )
+    >>> for fileName in testFileNames:
+    ...     result = []
+    ...     reader = SketchAppReader()
+    ...     readPath = '../Test/' + fileName
+    ...     skf = reader.read(readPath)
+    ...     for s in prettyPrint(skf):
+    ...         print(s)
+    """
+    if result is None:
+        result = []
+    if isinstance(d, SketchBase):
+        result.append('\t'*tab + str(d))
+        for attrName in sorted(d.ATTRS.keys()):
+            if hasattr(d, attrName):
+                prettyPrint(getattr(d, attrName), attrName, result, tab+1)
+        if hasattr(d, 'layers'):
+            for layer in d.layers:
+                prettyPrint(layer, 'layers', result, tab+1)
+    elif isinstance(d, dict):
+        result.append('\t'*tab + name + '{%d}' % len(d))
+        for key, value in sorted(d.items()):
+            prettyPrint(value, key, result, tab+1)
+    elif isinstance(d, (list, tuple)):
+        result.append('\t'*tab + '%s[%d]' % (name, len(d)))
+        for dd in d:
+            prettyPrint(dd, name, result, tab+1)
+    else:
+        result.append('\t'*tab + name + ': ' + str(d))
+
+    return result
+
 if __name__ == '__main__':
     import doctest
     import sys
