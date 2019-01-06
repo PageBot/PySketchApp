@@ -75,32 +75,38 @@ def _compare(d1, d2, result, path=None):
 def sketchCompare(sketchFile1, sketchFile2, result=None):
     """
     >>> from sketchappreader import SketchAppReader
+    >>> PATH = '../Test/' 
     >>> testFileNames = (
-    ...     'TestImage.sketch',
-    ...     'TestRectangles.sketch',
-    ...     'TestStar.sketch',
-    ...     'TestPolygon.sketch',
-    ...     'TestOval.sketch',
-    ...     'TestABC.sketch',
+    ...     PATH+'TestImage.sketch',
+    ...     PATH+'TestRectangles.sketch',
+    ...     PATH+'TestStar.sketch',
+    ...     PATH+'TestPolygon.sketch',
+    ...     PATH+'TestOval.sketch',
+    ...     PATH+'TestABC.sketch',
     ... )
-    >>> for fileName in testFileNames:
-    ...     result = []
+    >>> for readPath in testFileNames:
     ...     reader = SketchAppReader()
-    ...     readPath = '../Test/' + fileName
     ...     skf1 = reader.read(readPath)
     ...     writePath = readPath.replace('.sketch', 'Write.sketch')
     ...     writer = SketchAppWriter()
     ...     writer.write(writePath, skf1)
     ...     skf2 = reader.read(writePath)
-    ...     result = sketchCompare(skf1, skf2, result) # Should not give any differences
+    ...     result = sketchCompare(skf1, skf2) # Should not give any differences
     ...     if result:
     ...         print('--- Difference ---', readPath)
     ...         for error in result:
     ...             if error:
     ...                 print(error)
+    >>> sketchCompare('_export/SaveWrite.sketch', '_export/Save.sketch')
     """
     if result is None:
         result = []
+    if isinstance(sketchFile1, str):
+        reader = SketchAppReader() 
+        sketchFIle1 = reader.read(sketchFile1)
+    if isinstance(sketchFile2, str):
+        reader = SketchAppReader() 
+        sketchFIle2 = reader.read(sketchFile1)
     _compare(sketchFile1, sketchFile2, result)
 
     return result
@@ -121,8 +127,7 @@ def prettyPrint(d, name=None, result=None, tab=0):
     ...     reader = SketchAppReader()
     ...     readPath = '../Test/' + fileName
     ...     skf = reader.read(readPath)
-    ...     for s in prettyPrint(skf):
-    ...         print(s)
+    ...     result = prettyPrint(skf)
     """
     if result is None:
         result = []

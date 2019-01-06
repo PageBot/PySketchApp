@@ -50,6 +50,23 @@ class SketchApi:
         self.sketchFile = SketchAppReader().read(path)
         self.page = None # Current selected page or artboard
         self.layer = None # Curerent selected layer
+        self._fill = None # Current fill color
+        self._stroke = None # Current stroke color
+        self._path = None # Current open path-plygon to add points to
+
+    def _getFill(self, **kwargs):
+        fill = kwargs.get('fill', self._fill) or BLACK_COLOR
+        assert len(fill) in (3, 4)
+        if len(fill) == 3:
+            r, g, b = fill
+            return SketchColor(red=r, green=g, blue=b)
+        r, g, b, a = fill
+        return SketchColor(red=r, green=g, blue=b, alpha=a)
+
+    def _getStyle(self, **kwargs):
+        style = SketchStyle()
+        style.fills = [self._getFill(**kwargs)]
+        return style
 
     def save(self, path):
         """Save the current self.skethFile as sketch file.
@@ -60,7 +77,8 @@ class SketchApi:
         >>> api.selectLayer(name='Artboard 1')
         <artboard name=Artboard 1>
         >>> api.rect(x=100, y=110, width=200, height=210, name='Rectangle')
-        >>> api.save('_export/Text.sketch')
+        <shapeGroup name=Rectangle>
+        >>> api.save('_export/Save.sketch')
         >>> api.sketchFile
         <sketchFile>
         """
@@ -72,6 +90,32 @@ class SketchApi:
     def newDrawing(self, path=None):
         pass
 
+    def newGroup(self, x=None, y=None, w=None, h=None, name=None, **kwargs):
+        """
+        >>> api = SketchApi()
+        >>> page = api.selectPage(0)
+        >>> layers = api.selectLayer(name='Artboard 1').layers
+        >>> len(layers)
+        0
+        >>> g = api.newGroup(10, 20, 110, 120, fill=(0,0, 0.5))
+        >>> len(layers)
+        1
+        >>> g.style.fills[0]
+        <color red=0 green=0 blue=0.5 alpha=0>
+        """
+        assert self.layer is not None
+        if w is None:
+            w = DEFAULT_WIDTH
+        if h is None:
+            h = DEFAULT_HEIGHT
+
+        style = self._getStyle(**kwargs)
+        frame = SketchRect(x=x or 0, y=y or 0, width=w, height=h)
+        name = name or DEFAULT_NAME
+        g = SketchGroup(do_objectID=newObjectID(), style=style, frame=frame, name=name, **kwargs)
+        self.layer.append(g)
+        return g
+
     def selectPage(self, index):
         """Selectt the page with this index. Answer None if the page does not exist.
 
@@ -82,8 +126,8 @@ class SketchApi:
         <page name=Page 1>
         >>> api.selectLayer(name='Artboard 1')
         <artboard name=Artboard 1>
-        >>> api.rect(x=0, y=0, width=100, height=100)
-        >>> api.save('_export/Text2.sketch')
+        >>> r = api.rect(x=0, y=0, width=100, height=100)
+        >>> api.save('_export/SelectPage.sketch')
         """
         self.page = page = self.sketchFile.orderedPages[index]
         return page
@@ -96,11 +140,12 @@ class SketchApi:
         >>> page = api.selectPage(0)
         >>> api.selectLayer(name='Artboard 1')
         <artboard name=Artboard 1>
-        >>> api.selectLayer(pattern='board')
+        >>> artboard = api.selectLayer(pattern='board')
+        >>> artboard
         <artboard name=Artboard 1>
         """
         if self.page is None:
-            self.page = self.   selectPage(0)
+            self.page = self.selectPage(0)
 
         if self.page is not None:
             layers = self.page.find(_class=_class, name=name, pattern=pattern)
@@ -143,23 +188,39 @@ class SketchApi:
     def line(self, p1, p2):
         pass
 
-    def oval(self, x, y, w, h):
-        pass
+    def oval(self, x, y, w, h, name=None, **kwargs):
+        """Draw the oval with current fill and stroke.
 
-    def rect(self, x=None, y=None, w=None, h=None, name=None, **kwargs):
-        """Draw the rectangle with current fill and stroke."""
+        >>> api = SketchApi()
+        >>> page = api.selectPage(0)
+        >>> api.selectLayer(name='Artboard 1')
+        <artboard name=Artboard 1>
+        >>> artboard = api.selectLayer(pattern='board')
+        >>> artboard
+        <artboard name=Artboard 1>
+        >>> layers = artboard.layers
+        >>> len(layers)
+        0
+        >>> g = api.oval(100, 110, 200, 210, fill=(1, 0, 0.5, 0.25))
+        >>> len(layers)
+        1
+        >>> layers[0].style.fills
+        [<color red=1 green=0 blue=0.5 alpha=0.25>]
+        """
         if w is None:
             w = DEFAULT_WIDTH
         if h is None:
             h = DEFAULT_HEIGHT
-        frame = SketchRect(x=x or 0, y=y or 0, width=w, height=h)
+
+        style = self._getStyle(**kwargs)
+        frame = dict(_class='rect', x=x, y=x, width=w, height=h)
         name = name or DEFAULT_NAME
-        g = SketchShapeGroup(do_objectID=newObjectID(), frame=frame, name=name, **kwargs)
+        g = SketchShapeGroup(do_objectID=newObjectID(), style=style, frame=frame, 
+            name=name, **kwargs)
         self.layer.append(g)
 
         rFrame = dict(_class='rect', x=0, y=0, width=w, height=h)
-        r = SketchRectangle(parent=g, frame=rFrame, do_objectID=newObjectID(),
-            name='Path')
+        r = SketchOval(parent=g, frame=rFrame, do_objectID=newObjectID(), name='Path')
         r.points = [
             SketchCurvePoint(parent=r, curveFrom='{0, 0}', curveTo='{0, 0}', point='{0, 0}'),
             SketchCurvePoint(parent=r, curveFrom='{1, 0}', curveTo='{1, 0}', point='{1, 0}'),
@@ -167,17 +228,67 @@ class SketchApi:
             SketchCurvePoint(parent=r, curveFrom='{0, 1}', curveTo='{1, 1}', point='{0, 1}'),
         ]
         g.layers.append(r)
+        return g
 
-    def line(self, p1, p2):
-        pass
+    def rect(self, x=None, y=None, w=None, h=None, name=None, **kwargs):
+        """Draw the rectangle with current fill and stroke.
 
-    def fill(self, r, g=None, b=None, a=None, alpha=None):
+        >>> api = SketchApi()
+        >>> page = api.selectPage(0)
+        >>> api.selectLayer(name='Artboard 1')
+        <artboard name=Artboard 1>
+        >>> artboard = api.selectLayer(pattern='board')
+        >>> artboard
+        <artboard name=Artboard 1>
+        >>> layers = artboard.layers
+        >>> len(layers)
+        0
+        >>> r = api.rect(100, 110, 200, 210, fill=(1, 0, 0, 0.5))
+        >>> len(layers)
+        1
+        >>> r.style.fills
+        [<color red=1 green=0 blue=0 alpha=0.5>]
+        """
+        if w is None:
+            w = DEFAULT_WIDTH
+        if h is None:
+            h = DEFAULT_HEIGHT
+
+        style = self._getStyle(**kwargs)
+        frame = dict(_class='rect', x=x, y=x, width=w, height=h)
+        name = name or DEFAULT_NAME
+        g = SketchShapeGroup(do_objectID=newObjectID(), style=style, frame=frame, 
+            name=name, **kwargs)
+        self.layer.append(g)
+
+        rFrame = dict(_class='rect', x=0, y=0, width=w, height=h)
+        r = SketchRectangle(parent=g, frame=rFrame, do_objectID=newObjectID(), name='Path')
+        r.points = [
+            SketchCurvePoint(parent=r, curveFrom='{0, 0}', curveTo='{0, 0}', point='{0, 0}'),
+            SketchCurvePoint(parent=r, curveFrom='{1, 0}', curveTo='{1, 0}', point='{1, 0}'),
+            SketchCurvePoint(parent=r, curveFrom='{1, 1}', curveTo='{1, 1}', point='{1, 1}'),
+            SketchCurvePoint(parent=r, curveFrom='{0, 1}', curveTo='{1, 1}', point='{0, 1}'),
+        ]
+        g.layers.append(r)
+        return g
+
+    def fill(self, r, g=None, b=None, a=None):
         # Covering API inconsistencies in DrawBot
-        pass
+        if g is not None or b is not None:
+            assert not isinstance(r, (tuple, list))
+            r, g, b = r or 0, g or 0, b or 0
+        elif isinstance(r, (list, tuple)):
+            if len(r) == 3:
+                r, g, b = r
+            elif len(r) == 4:
+                r, g, b, a = r
+            else:
+                raise ValueError
+        self._fill = r, g, b, a
 
     setFillColor = setStrokeColor = stroke = fill
 
-    def cmykFill(self, c, m=None, y=None, k=None, a=None, alpha=None):
+    def cmykFill(self, c, m=None, y=None, k=None, a=None):
         # Covering API inconsistencies in DrawBot
         pass
 
