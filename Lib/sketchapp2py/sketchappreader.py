@@ -34,8 +34,7 @@ class SketchAppReader(SketchAppBase):
   def read(self, path):
     """Read a sketch file and answer a SketchDocument that contains the interpreted data.
 
-    >>> path = '../Test/TestImage.sketch'
-    >>> #path = '../Test/TestStar.sketch'
+    >>> path = '../../Test/TestStar.sketch'
     >>> reader = SketchAppReader()
     >>> skf = reader.read(path)
     >>> skf.document.do_objectID is not None
@@ -43,10 +42,12 @@ class SketchAppReader(SketchAppBase):
     >>> len(skf.pages)
     1
     >>> pageId, page = sorted(skf.pages.items())[0]
+    >>> page.__class__.__name__
+    'SketchPage'
     >>> page.name
     'Page 1'
     >>> page.frame 
-    <rect x=0.0 y=0.0>
+    <rect x=0 y=0>
     >>> page.isLocked
     False
     >>> page.isVisible
@@ -57,10 +58,10 @@ class SketchAppReader(SketchAppBase):
     >>> artboard
     <artboard name=Artboard1>
     >>> artboard.layers
-    [<bitmap name=Bitcount_cheese_e>]
+    [<star name=Star>]
     >>> bitmap = artboard.layers[0]
     >>> bitmap.frame
-    <rect x=300.0 y=192.0>
+    <rect x=60 y=181>
     """
 
     assert path.endswith('.'+FILETYPE_SKETCH)
@@ -107,10 +108,10 @@ class SketchAppReader(SketchAppBase):
       d = json.loads(fc)
       skf.meta = SketchMeta(parent=skf, **d)
  
-    # Find all imaes used in the file tree, so we can save them with their layer name.
+    # Find all images used in the file tree, so we can save them with their layer name.
     # Note that for now this is not a safe method, in case there are layers with
     # the same name in the document that refer to different bitmap files.
-    # Also not that renaming the files in the _images/ folder, will disconnect them
+    # Also note that renaming the files in the _images/ folder, will disconnect them
     # from placements by bitmap layers.
     # TODO: Solve this later, creating unique file names.
     imageRefs = set()
@@ -135,7 +136,8 @@ class SketchAppReader(SketchAppBase):
 
     # Save any previews in the _images/ directory too.
     # Note that there may be an potential naming conflict here, in case a layer is called 
-    # "preview". TODO: To be solved later.
+    # "preview". 
+    # TODO: To be solved later.
     for key in zipInfo:
       if key.startswith(PREVIEWS_JSON): # This is a preview image
         previewBinary = zf.read(key)

@@ -21,6 +21,7 @@
 #
 #  Inspect sketch file:
 #  https://xaviervia.github.io/sketch2json/
+#  https://developer.sketch.com/file-format/
 #
 #  https://gist.github.com/xaviervia/edbea95d321feacaf0b5d8acd40614b2
 #  This description is not complete. 
@@ -35,6 +36,7 @@ from sketchappreader import SketchAppReader
 from sketchappwriter import SketchAppWriter
 
 RESOURCES_PATH = '/'.join(__file__.split('/')[:-1])
+RESOURCES_TEMPLATE_PATH = RESOURCES_PATH + '/Resources/Template.sketch' # Default template document.
 
 class SketchApi:
     """
@@ -43,16 +45,39 @@ class SketchApi:
     <sketchFile>
     >>> api.sketchFile.path.endswith('/Resources/Template.sketch')
     True
+    >>> api.filePath == api.sketchFile.path
+    True
+    >>> path = 'Resources/TemplateSquare.sketch'
+    >>> api = SketchApi(path)
+    >>> page = api.selectPage(0)
+    >>> page, api.page
+    (<page name=Page 1>, <page name=Page 1>)
+    >>> page.name 
+    'Page 1'
+    >>> len(page.layers[0]), page.artBoards, len(page.artBoards[0])
+    (6, [<artboard name=Artboard 1>], 6)
+    >>> artBoard = page.artBoards[0]
+    >>> e = artBoard.layers[3]
+    >>> e, e.name
+    (<rectangle name=Rectangle Middle Right>, 'Rectangle Middle Right')
+    >>> e = page.find(pattern='Top Left')[0]
+    >>> e.name, e.frame, e.x, e.y, e.w, e.h
+    ('Rectangle Top Left', <rect x=60 y=0>, 60, 0, 216, 168)
+    >>> e.style['fills']   
     """
     def __init__(self, path=None):
         if path is None:
-            path = RESOURCES_PATH + '/Resources/Template.sketch'
+            path = RESOURCES_TEMPLATE_PATH
         self.sketchFile = SketchAppReader().read(path)
         self.page = None # Current selected page or artboard
         self.layer = None # Curerent selected layer
         self._fill = None # Current fill color
         self._stroke = None # Current stroke color
         self._path = None # Current open path-plygon to add points to
+
+    def _get_filePath(self):
+        return self.sketchFile.path
+    filePath = property(_get_filePath)
 
     def _getFill(self, **kwargs):
         fill = kwargs.get('fill', self._fill) or BLACK_COLOR
@@ -68,7 +93,7 @@ class SketchApi:
         style.fills = [self._getFill(**kwargs)]
         return style
 
-    def save(self, path):
+    def save(self, path=None):
         """Save the current self.skethFile as sketch file.
 
         >>> if not os.path.exists('_export'):
@@ -82,6 +107,8 @@ class SketchApi:
         >>> api.sketchFile
         <sketchFile>
         """
+        if path is None:
+            path = self.path
         SketchAppWriter().write(path, self.sketchFile)
 
     def newPage(self, w=None, h=None):

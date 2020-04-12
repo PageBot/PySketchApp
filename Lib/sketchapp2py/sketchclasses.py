@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 # -----------------------------------------------------------------------------
 #
-#  P Y 2 S K E T C H A P P 2 P Y
+#  S K E T C H A P P 2 P Y
 #
 #  Copyright (c) 2016+ Buro Petr van Blokland + Claudia Mens
 #  www.pagebot.io
@@ -65,7 +65,7 @@ DEFAULT_FONTSIZE = 12
 DEFAULT_WIDTH = DEFAULT_HEIGHT = 100
 DEFAULT_NAME = 'Untitled'
 
-APP_VERSION = "53.5" # None MacOD 51.3
+APP_VERSION = "61.2"
 APP_ID = 'com.bohemiancoding.sketch3'
 
 # SketchApp 43 files JSON types
@@ -126,26 +126,26 @@ class SketchBase:
 
     >>> d = dict(x=100, y=200, width=300, height=400)
     >>> SketchRect(**d)
-    <rect x=100.0 y=200.0>
+    <rect x=100 y=200>
     >>> SketchRect(x=100, y=300)
-    <rect x=100.0 y=300.0>
+    <rect x=100 y=300>
 
     >>> frame = dict(x=20, y=30)
     >>> artboard = SketchArtboard(frame=frame)
     >>> artboard
     <artboard name=Artboard>
     >>> artboard.frame
-    <rect x=20.0 y=30.0>
+    <rect x=20 y=30>
 
     >>> frame = dict(width=400, height=500)
     >>> page = SketchPage(frame=frame)
     >>> page.frame
-    <rect x=0.0 y=0.0>
+    <rect x=0 y=0>
 
     >>> frame = dict(x=10, y=20, width=30, height=40)
     >>> artboard = SketchArtboard(frame=frame)
     >>> artboard.frame
-    <rect x=10.0 y=20.0>
+    <rect x=10 y=20>
     """
     for name, value in kwargs.items(): 
         # If not part of the Sketch ATTRS attribute, just set value unchanged.
@@ -251,15 +251,25 @@ class SketchBase:
 
     return d
 
-
 def asRect(sketchNestedPositionString):
   """
   type SketchNestedPositionString = string // '{{0, 0}, {75.5, 15}}'
+
+  >>> asRect('{{0, 0}, {75.5, 15}}')
+  (0, 0, 75.5, 15)
+  >>> asRect('{{-100, 20000}, {75.5, 15}}')
+  (-100, 20000, 75.5, 15)
+  >>> asRect('{{-100, 1234a}, {75.5, 15}}') is None
+  True
   """
   if sketchNestedPositionString is None:
     return None
-  (x, y), (w, h) = POINT_PATTERN.findall(sketchNestedPositionString)
-  return x, y, w, h
+  try:
+    (x, y), (w, h) = POINT_PATTERN.findall(sketchNestedPositionString)
+    return asNumber(x), asNumber(y), asNumber(w), asNumber(h)
+  except ValueError:
+    pass
+  return None
 
 def asColorNumber(v):
   try:
@@ -268,8 +278,23 @@ def asColorNumber(v):
     return 0
 
 def asNumber(v):
+  """
+  Answer the value interpreted as value or None otherwise
+
+  >>> asNumber('123')
+  123
+  >>> asNumber('123.4')
+  123.4
+  >>> asNumber(123.4)
+  123.4
+  >>> asNumber('123a')
+  0
+  """
   try:
-    return float(v)
+    number = float(v)
+    if number == int(number):
+      return int(number)
+    return number
   except ValueError:
     return 0
 
@@ -323,9 +348,9 @@ def SketchPositionString(v):
   them here, before creating a real SketchPoint instance.
 
   >>> SketchPositionString('{0, 0}')
-  <point x=0.0 y=0.0>
+  <point x=0 y=0>
   >>> SketchPositionString('{0000021, -12345}')
-  <point x=21.0 y=-12345.0>
+  <point x=21 y=-12345>
   >>> SketchPositionString('{10.05, -10.66}')
   <point x=10.05 y=-10.66>
   
@@ -488,10 +513,10 @@ class SketchGradientStop(SketchBase):
   >>> color = SketchColor(blue=1) 
   >>> gs = SketchGradientStop(color=color, position=1)
   >>> gs.color, gs.position
-  (<color red=0 green=0 blue=1 alpha=0>, 1.0)
+  (<color red=0 green=0 blue=1 alpha=0>, 1)
   >>> gs = SketchGradientStop()
   >>> gs.color, gs.position
-  (<color red=0 green=0 blue=0 alpha=1>, 0.0)
+  (<color red=0 green=0 blue=0 alpha=1>, 0)
   """
   CLASS = 'gradientStop'
   ATTRS = {
@@ -693,6 +718,12 @@ class SketchRect(SketchBase):
     'height': (asNumber, 1),
     'constrainProportions': (asBool, False),
   }
+  def __getitem__(self, i):
+    return (self.x, self.y, self.width, self.height)[i]
+
+  def __iter__(self):
+    for v in (self.x, self.y, self.width, self.height):
+      yield v
 
 class SketchTextStyle(SketchBase):
   """
@@ -1075,6 +1106,10 @@ class SketchLayer(SketchBase):
     """In case the layer has layers, then answer them by index."""
     return self.layers[layerIndex]
 
+  def __len__(self):
+    """Answer the number of layer that this SKetchLayer is holding"""
+    return len(self.layers)
+
   def append(self, layer):
     """Add layer to self.layers and set layer.parent to self.
     TODO: If layer.parent is already set, then remove it from its parent
@@ -1092,6 +1127,14 @@ class SketchLayer(SketchBase):
     for layer in self.layers:
         layer.find(_class=_class, name=name, pattern=pattern, found=found)
     return found
+
+  def _get_artBoards(self):
+    artBoards = []
+    for layer in self.layers:
+      if isinstance(layer, SketchArtboard):
+        artBoards.append(layer)
+    return artBoards
+  artBoards = property(_get_artBoards)
 
   def asJson(self):
     """Get attributes from base as JSON dict."""
@@ -1457,6 +1500,35 @@ class SketchRectangle(SketchBase):
     'fixedRadius': (asNumber, 0),
     'hasConvertedToNewRoundCorners': (asBool, True)
   }
+  def _get_x(self):
+    return self.frame[0]
+  def _set_x(self, x):
+    _, y, w, h = self.frame
+    self.frame = x, y, w, h
+    self.edited = True
+  x = property(_get_x, _set_x)
+
+  def _get_y(self):
+    return self.frame[1]
+  def _set_y(self, y):
+    x, _, w, h = self.frame
+    self.frame = x, y, w, h
+    self.edited = True
+  y = property(_get_y, _set_y)
+
+  def _get_w(self):
+    return self.frame[2]
+  def _set_w(self, w):
+    x, y, _, h = self.frame
+    self.frame = x, y, _, h
+  w = property(_get_w, _set_w)
+
+  def _get_h(self):
+    return self.frame[3]
+  def _set_h(self, h):
+    x, y, w, _ = self.frame
+    self.frame = x, y, w, h
+  h = property(_get_h, _set_h)
 
 class SketchOval(SketchBase):
   """
@@ -1725,7 +1797,6 @@ class SketchPage(SketchLayer):
     'userInfo': (asDict, {}),
     'clippingMaskMode': (asInt, 0),
   }
-
 
 # meta.json
 class SketchMeta(SketchBase):
