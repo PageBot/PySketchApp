@@ -41,7 +41,7 @@ class SketchAppWriter(SketchAppBase):
   ... )
   >>> for fileName in testFileNames:
   ...     reader = SketchAppReader()
-  ...     readPath = '../Test/' + fileName
+  ...     readPath = '../../Test/' + fileName
   ...     skf = reader.read(readPath)
   ...     writePath = readPath.replace('.sketch', 'Write.sketch')
   ...     writer = SketchAppWriter()
@@ -49,6 +49,7 @@ class SketchAppWriter(SketchAppBase):
   """
 
   def write(self, path, sketchFile):
+    assert path.endswith('.sketch')
     zf = zipfile.ZipFile(path, mode='w') # Open the file.sketch as Zip.
 
     tmpPath = '/tmp/'+DOCUMENT_JSON

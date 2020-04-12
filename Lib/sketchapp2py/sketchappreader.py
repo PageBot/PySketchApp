@@ -47,7 +47,7 @@ class SketchAppReader(SketchAppBase):
     >>> page.name
     'Page 1'
     >>> page.frame 
-    <rect x=0 y=0>
+    <rect x=0 y=0 w=0 h=0>
     >>> page.isLocked
     False
     >>> page.isVisible
@@ -61,7 +61,7 @@ class SketchAppReader(SketchAppBase):
     [<star name=Star>]
     >>> bitmap = artboard.layers[0]
     >>> bitmap.frame
-    <rect x=60 y=181>
+    <rect x=60 y=181 w=345 h=345>
     """
 
     assert path.endswith('.'+FILETYPE_SKETCH)

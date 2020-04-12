@@ -1865,7 +1865,7 @@ class SketchFile(SketchBase):
     self.meta = None
 
   def __repr__(self):
-    return '<%s path=%s>' % (self.__class__.__name__, self.path.split('.')[-1])   
+    return '<%s path=%s>' % (self.__class__.__name__, self.path.split('/')[-1])   
 
   def find(self, _class=None, name=None, pattern=None):
     found = []

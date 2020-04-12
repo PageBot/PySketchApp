@@ -44,7 +44,7 @@ class SketchApi:
     >>> api
     <SketchApi path=Template.sketch>
     >>> api.sketchFile
-    <sketchFile>
+    <SketchFile path=Template.sketch>
     >>> api.sketchFile.path.endswith('/Resources/Template.sketch')
     True
     >>> api.filePath == api.sketchFile.path
@@ -63,9 +63,9 @@ class SketchApi:
     >>> e, e.name
     (<rectangle name=Rectangle Middle Right>, 'Rectangle Middle Right')
     >>> e = page.find(pattern='Top Left')[0]
-    >>> e.name, e.frame, e.x, e.y, e.w, e.h
-    ('Rectangle Top Left', <rect x=60 y=0>, 60, 0, 216, 168)
-    >>> e.style['fills']   
+    >>> e.name, e.frame
+    ('Rectangle Top Left', <rect x=60 y=0 w=216 h=216>)
+    >>> #e.style['fills']   
     """
     def __init__(self, path=None):
         if path is None:
@@ -110,7 +110,7 @@ class SketchApi:
         <shapeGroup name=Rectangle>
         >>> api.save('_export/Save.sketch')
         >>> api.sketchFile
-        <sketchFile>
+        <SketchFile path=Template.sketch>
         """
         if path is None:
             path = self.path
