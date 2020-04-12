@@ -126,26 +126,26 @@ class SketchBase:
 
     >>> d = dict(x=100, y=200, width=300, height=400)
     >>> SketchRect(**d)
-    <rect x=100 y=200>
+    <rect x=100 y=200 w=300 h=300>
     >>> SketchRect(x=100, y=300)
-    <rect x=100 y=300>
+    <rect x=100 y=300 w=1 h=1>
 
     >>> frame = dict(x=20, y=30)
     >>> artboard = SketchArtboard(frame=frame)
     >>> artboard
     <artboard name=Artboard>
     >>> artboard.frame
-    <rect x=20 y=30>
+    <rect x=20 y=30 w=1 h=1>
 
     >>> frame = dict(width=400, height=500)
     >>> page = SketchPage(frame=frame)
     >>> page.frame
-    <rect x=0 y=0>
+    <rect x=0 y=0 w=400 h=400>
 
     >>> frame = dict(x=10, y=20, width=30, height=40)
     >>> artboard = SketchArtboard(frame=frame)
     >>> artboard.frame
-    <rect x=10 y=20>
+    <rect x=10 y=20 w=30 h=30>
     """
     for name, value in kwargs.items(): 
         # If not part of the Sketch ATTRS attribute, just set value unchanged.
@@ -250,6 +250,7 @@ class SketchBase:
       d['_class'] = self.CLASS
 
     return d
+
 
 def asRect(sketchNestedPositionString):
   """
@@ -719,12 +720,24 @@ class SketchRect(SketchBase):
     'constrainProportions': (asBool, False),
   }
   def __getitem__(self, i):
-    return (self.x, self.y, self.width, self.height)[i]
+    return (self.x, self.y, self.w, self.h)[i]
 
   def __iter__(self):
-    for v in (self.x, self.y, self.width, self.height):
+    for v in (self.x, self.y, self.w, self.h):
       yield v
 
+  def _get_w(self):
+    return self.width
+  def _set_w(self, w):
+    self.width = w
+  w = property(_get_w, _set_w)
+  
+  def _get_h(self):
+    return self.width
+  def _set_h(self, h):
+    self.height = h
+  h = property(_get_h, _set_h)
+  
 class SketchTextStyle(SketchBase):
   """
   _class: 'textStyle',
@@ -1500,35 +1513,6 @@ class SketchRectangle(SketchBase):
     'fixedRadius': (asNumber, 0),
     'hasConvertedToNewRoundCorners': (asBool, True)
   }
-  def _get_x(self):
-    return self.frame[0]
-  def _set_x(self, x):
-    _, y, w, h = self.frame
-    self.frame = x, y, w, h
-    self.edited = True
-  x = property(_get_x, _set_x)
-
-  def _get_y(self):
-    return self.frame[1]
-  def _set_y(self, y):
-    x, _, w, h = self.frame
-    self.frame = x, y, w, h
-    self.edited = True
-  y = property(_get_y, _set_y)
-
-  def _get_w(self):
-    return self.frame[2]
-  def _set_w(self, w):
-    x, y, _, h = self.frame
-    self.frame = x, y, _, h
-  w = property(_get_w, _set_w)
-
-  def _get_h(self):
-    return self.frame[3]
-  def _set_h(self, h):
-    x, y, w, _ = self.frame
-    self.frame = x, y, w, h
-  h = property(_get_h, _set_h)
 
 class SketchOval(SketchBase):
   """
@@ -1881,7 +1865,7 @@ class SketchFile(SketchBase):
     self.meta = None
 
   def __repr__(self):
-    return '<sketchFile>'   
+    return '<%s path=%s>' % (self.__class__.__name__, self.path.split('.')[-1])   
 
   def find(self, _class=None, name=None, pattern=None):
     found = []

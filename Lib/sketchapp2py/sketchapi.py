@@ -31,9 +31,9 @@
 #  https://github.com/AnimaApp/sketch-web-viewer
 #
 import os
-from sketchclasses import *
-from sketchappreader import SketchAppReader
-from sketchappwriter import SketchAppWriter
+from sketchapp2py.sketchclasses import *
+from sketchapp2py.sketchappreader import SketchAppReader
+from sketchapp2py.sketchappwriter import SketchAppWriter
 
 RESOURCES_PATH = '/'.join(__file__.split('/')[:-1])
 RESOURCES_TEMPLATE_PATH = RESOURCES_PATH + '/Resources/Template.sketch' # Default template document.
@@ -41,6 +41,8 @@ RESOURCES_TEMPLATE_PATH = RESOURCES_PATH + '/Resources/Template.sketch' # Defaul
 class SketchApi:
     """
     >>> api = SketchApi()
+    >>> api
+    <SketchApi path=Template.sketch>
     >>> api.sketchFile
     <sketchFile>
     >>> api.sketchFile.path.endswith('/Resources/Template.sketch')
@@ -74,6 +76,9 @@ class SketchApi:
         self._fill = None # Current fill color
         self._stroke = None # Current stroke color
         self._path = None # Current open path-plygon to add points to
+
+    def __repr__(self):
+        return '<%s path=%s>' % (self.__class__.__name__, self.sketchFile.path.split('/')[-1])
 
     def _get_filePath(self):
         return self.sketchFile.path
