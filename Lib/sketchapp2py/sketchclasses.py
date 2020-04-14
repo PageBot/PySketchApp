@@ -126,26 +126,26 @@ class SketchBase:
 
     >>> d = dict(x=100, y=200, width=300, height=400)
     >>> SketchRect(**d)
-    <rect x=100 y=200 w=300 h=300>
+    <SketchRect x=100 y=200 w=300 h=400>
     >>> SketchRect(x=100, y=300)
-    <rect x=100 y=300 w=1 h=1>
+    <SketchRect x=100 y=300 w=100 h=100>
 
     >>> frame = dict(x=20, y=30, w=100, h=200)
     >>> artboard = SketchArtboard(frame=frame)
     >>> artboard
-    <artboard name=Artboard>
+    <SketchArtboard name=Artboard w=100 h=100>
     >>> artboard.frame
-    <rect x=20 y=30 w=1 h=1>
+    <SketchRect x=20 y=30 w=100 h=100>
 
     >>> frame = dict(width=400, height=500)
     >>> page = SketchPage(frame=frame)
     >>> page.frame
-    <rect x=0 y=0 w=400 h=400>
+    <SketchRect x=0 y=0 w=400 h=500>
 
     >>> frame = dict(x=10, y=20, width=30, height=40)
     >>> artboard = SketchArtboard(frame=frame)
     >>> artboard.frame
-    <rect x=10 y=20 w=30 h=30>
+    <SketchRect x=10 y=20 w=30 h=40>
     """
     for name, value in kwargs.items(): 
         # If not part of the Sketch ATTRS attribute, just set value unchanged.
@@ -349,11 +349,11 @@ def SketchPositionString(v):
   them here, before creating a real SketchPoint instance.
 
   >>> SketchPositionString('{0, 0}')
-  <point x=0 y=0>
+  <SketchPoint x=0 y=0>
   >>> SketchPositionString('{0000021, -12345}')
-  <point x=21 y=-12345>
+  <SketchPoint x=21 y=-12345>
   >>> SketchPositionString('{10.05, -10.66}')
-  <point x=10.05 y=-10.66>
+  <SketchPoint x=10.05 y=-10.66>
   
   """
   sxy = POINT_PATTERN.findall(v)
@@ -364,11 +364,11 @@ class SketchPoint(SketchBase):
   """Interpret the {x,y} string into a point2D.
 
   >>> SketchPoint(x=10, y=20)
-  <point x=10 y=20>
+  <SketchPoint x=10 y=20>
   >>> SketchPoint(x=21, y=-12345)
-  <point x=21 y=-12345>
+  <SketchPoint x=21 y=-12345>
   >>> SketchPoint(x=10.05, y=-10.66)
-  <point x=10.05 y=-10.66>
+  <SketchPoint x=10.05 y=-10.66>
   """
   REPR_ATTRS = ['x', 'y'] # Attributes to be show in __repr__
   CLASS = 'point'
@@ -458,10 +458,10 @@ class SketchBorder(SketchBase):
 
   >>> color = SketchColor(red=1)
   >>> color
-  <color red=1 green=0 blue=0 alpha=0>
+  <SketchColor red=1 green=0 blue=0 alpha=0>
   >>> border = SketchBorder(color=color, fillType=1)
   >>> border.color
-  <color red=1 green=0 blue=0 alpha=0>
+  <SketchColor red=1 green=0 blue=0 alpha=0>
   >>> border.fillType
   1
   """
@@ -514,10 +514,10 @@ class SketchGradientStop(SketchBase):
   >>> color = SketchColor(blue=1) 
   >>> gs = SketchGradientStop(color=color, position=1)
   >>> gs.color, gs.position
-  (<color red=0 green=0 blue=1 alpha=0>, 1)
+  (<SketchColor red=0 green=0 blue=1 alpha=0>, 1)
   >>> gs = SketchGradientStop()
   >>> gs.color, gs.position
-  (<color red=0 green=0 blue=0 alpha=1>, 0)
+  (<SketchColor red=0 green=0 blue=0 alpha=1>, 0)
   """
   CLASS = 'gradientStop'
   ATTRS = {
@@ -1420,7 +1420,28 @@ class SketchSymbolInstance(SketchBase):
   """
   CLASS = 'symbolInstance'
   ATTRS = {
-
+    'do_objectID': (asId, None),
+    'exportOptions': (SketchExportOptions, {}),
+    'frame': (SketchRect, BASE_FRAME),
+    'isFlippedHorizontal': (asBool, False),
+    'isFlippedVertical': (asBool, False),
+    'isFixedToViewport': (asBool, False),
+    'isLocked': (asBool, False),
+    'isVisible': (asBool, True),
+    'layerListExpandedType': (asInt, 0),
+    'name': (asString, ''),
+    'nameIsFixed': (asBool, False),
+    'resizingType': (asInt, 0),
+    'rotation': (asNumber, 0),
+    'shouldBreakMaskChain': (asBool, False),
+    'style': (SketchStyle, None),
+    'horizontalSpacing': (asInt, 0), # Or {} ??
+    'masterInfluenceEdgeMaxXPadding': (asNumber, 0),
+    'masterInfluenceEdgeMaxYPadding': (asNumber, 0),
+    'masterInfluenceEdgeMinXPadding': (asNumber, 0),
+    'masterInfluenceEdgeMinYPadding': (asNumber, 0),
+    'symbolID': (asId, None),
+    'verticalSpacing': (asInt, 0), # Or {} ??
   }
 
 class SketchGroup(SketchLayer):

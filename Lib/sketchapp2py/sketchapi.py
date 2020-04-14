@@ -53,7 +53,7 @@ class SketchApi:
     >>> api = SketchApi(path)
     >>> page = api.selectPage(0)
     >>> page, api.page
-    (<page name=Page 1>, <page name=Page 1>)
+    (<SketchPage name=Page 1>, <SketchPage name=Page 1>)
     >>> page.name 
     'Page 1'
     >>> len(page.layers[0]), page.artBoards, len(page.artBoards[0])
@@ -61,10 +61,10 @@ class SketchApi:
     >>> artBoard = page.artBoards[0]
     >>> e = artBoard.layers[3]
     >>> e, e.name
-    (<rectangle name=Rectangle Middle Right>, 'Rectangle Middle Right')
+    (<SketchRectangle name=Rectangle Middle Right>, 'Rectangle Middle Right')
     >>> e = page.find(pattern='Top Left')[0]
     >>> e.name, e.frame
-    ('Rectangle Top Left', <rect x=60 y=0 w=216 h=168>)
+    ('Rectangle Top Left', <SketchRect x=60 y=0 w=216 h=168>)
     >>> #e.style['fills']   
     """
     def __init__(self, path=None):
@@ -107,7 +107,7 @@ class SketchApi:
         >>> api.selectLayer(name='Artboard 1')
         <SketchArtboard name=Artboard 1 w=576 h=783>
         >>> api.rect(x=100, y=110, width=200, height=210, name='Rectangle')
-        <shapeGroup name=Rectangle>
+        <SketchShapeGroup name=Rectangle>
         >>> api.save('_export/Save.sketch')
         >>> api.sketchFile
         <SketchFile path=Template.sketch>
@@ -133,7 +133,7 @@ class SketchApi:
         >>> len(layers)
         1
         >>> g.style.fills[0]
-        <color red=0 green=0 blue=0.5 alpha=0>
+        <SketchColor red=0 green=0 blue=0.5 alpha=0>
         """
         assert self.layer is not None
         if w is None:
@@ -148,20 +148,30 @@ class SketchApi:
         self.layer.append(g)
         return g
 
+    def _get_pages(self):
+        """Answer the list with SketchPage instanges, read from the file.
+
+        >>> api = SketchApi()
+        >>> api.pages
+        [<SketchPage name=Page 1>]
+        """
+        return self.sketchFile.orderedPages
+    pages = property(_get_pages)
+
     def selectPage(self, index):
-        """Selectt the page with this index. Answer None if the page does not exist.
+        """Select the page with this index. Answer None if the page does not exist.
 
         >>> api = SketchApi()
         >>> len(api.sketchFile.pages)
         1
         >>> api.selectPage(0)
-        <page name=Page 1>
+        <SketchPage name=Page 1>
         >>> api.selectLayer(name='Artboard 1')
         <SketchArtboard name=Artboard 1 w=576 h=783>
         >>> r = api.rect(x=0, y=0, width=100, height=100)
         >>> api.save('_export/SelectPage.sketch')
         """
-        self.page = page = self.sketchFile.orderedPages[index]
+        self.page = page = self.pages[index]
         return page
 
     def selectLayer(self, _class=None, name=None, pattern=None):
@@ -198,7 +208,7 @@ class SketchApi:
 
         >>> api = SketchApi()
         >>> api.getPages()
-        [<page name=Page 1>]
+        [<SketchPage name=Page 1>]
         """
         return self.sketchFile.orderedPages
 
@@ -265,7 +275,7 @@ class SketchApi:
         >>> len(layers)
         1
         >>> layers[0].style.fills
-        [<color red=1 green=0 blue=0.5 alpha=0.25>]
+        [<SketchColor red=1 green=0 blue=0.5 alpha=0.25>]
         """
         if w is None:
             w = DEFAULT_WIDTH
@@ -307,7 +317,7 @@ class SketchApi:
         >>> len(layers)
         1
         >>> r.style.fills
-        [<color red=1 green=0 blue=0 alpha=0.5>]
+        [<SketchColor red=1 green=0 blue=0 alpha=0.5>]
         """
         if w is None:
             w = DEFAULT_WIDTH
