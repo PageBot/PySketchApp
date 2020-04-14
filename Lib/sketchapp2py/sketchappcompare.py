@@ -106,10 +106,10 @@ def sketchCompare(sketchFile1, sketchFile2, result=None):
         result = []
     if isinstance(sketchFile1, str):
         reader = SketchAppReader() 
-        sketchFIle1 = reader.read(sketchFile1)
+        sketchFile1 = reader.read(sketchFile1)
     if isinstance(sketchFile2, str):
         reader = SketchAppReader() 
-        sketchFIle2 = reader.read(sketchFile1)
+        sketchFile2 = reader.read(sketchFile2)
     _compare(sketchFile1, sketchFile2, result)
 
     return result

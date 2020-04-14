@@ -130,7 +130,7 @@ class SketchBase:
     >>> SketchRect(x=100, y=300)
     <rect x=100 y=300 w=1 h=1>
 
-    >>> frame = dict(x=20, y=30)
+    >>> frame = dict(x=20, y=30, w=100, h=200)
     >>> artboard = SketchArtboard(frame=frame)
     >>> artboard
     <artboard name=Artboard>
@@ -169,7 +169,7 @@ class SketchBase:
       setattr(self, name, value)
 
   def __repr__(self):
-    s = ['<%s' % (self._class or '')]
+    s = ['<%s' % (self.__class__.__name__ or '')]
     for attrName in self.REPR_ATTRS:
       if hasattr(self, attrName):
         s.append('%s=%s' % (attrName, getattr(self, attrName)))
@@ -715,8 +715,8 @@ class SketchRect(SketchBase):
     'do_objectID': (asId, None),
     'x': (asNumber, 0),
     'y': (asNumber, 0),
-    'width': (asNumber, 1),
-    'height': (asNumber, 1),
+    'width': (asNumber, 100),
+    'height': (asNumber, 100),
     'constrainProportions': (asBool, False),
   }
   def __getitem__(self, i):
@@ -733,7 +733,7 @@ class SketchRect(SketchBase):
   w = property(_get_w, _set_w)
   
   def _get_h(self):
-    return self.width
+    return self.height
   def _set_h(self, h):
     self.height = h
   h = property(_get_h, _set_h)
@@ -1331,6 +1331,8 @@ class SketchArtboard(SketchLayer):
     'layout': (SketchLayoutGrid, None),
     'resizesContent': (asBool, True),
   }
+  def __repr__(self):
+    return '<%s name=%s w=%d h=%d>' % (self.__class__.__name__, self.name, self.frame.w, self.frame.h)   
 
 class SketchBitmap(SketchBase):
   """
