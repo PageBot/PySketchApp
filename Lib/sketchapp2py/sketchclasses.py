@@ -214,12 +214,20 @@ class SketchBase:
     >>> p = SketchPoint(x=0, y=200, name='myPoint') # Set attribute, different from ATTRS
     >>> p.name
     'myPoint'
-    >>> p.find(name='myPoint')[0] is p
+    >>> p.find(name='myPoint')[0] is p # Search by exact name
+    True
+    >>> p.find(name='myPts')# Search by exact name
+    []
+    >>> p.find(pattern='myPo')[0] is p # Search by name pattern
+    True
+    >>> p.find(_class=SketchPoint)[0] is p
+    True
+    >>> p.find(_class=SketchPoint.CLASS)[0] is p
     True
     """
     if found is None:
       found = []
-    if (_class is not None and self._class == _class) or \
+    if (_class in (self.__class__, self.CLASS)) or \
        (name is not None and hasattr(self, 'name') and self.name == name) or \
        (pattern is not None and hasattr(self, 'name') and pattern in self.name):
       found.append(self)
@@ -1120,7 +1128,7 @@ class SketchLayer(SketchBase):
     return self.layers[layerIndex]
 
   def __len__(self):
-    """Answer the number of layer that this SKetchLayer is holding"""
+    """Answer the number of layers that this SketchLayer is holding"""
     return len(self.layers)
 
   def append(self, layer):
@@ -1156,7 +1164,7 @@ class SketchLayer(SketchBase):
     for layer in self.layers:
       layers.append(layer.asJson())
     return d
-
+   
 class SketchShapeGroup(SketchLayer):
   """
   _class: 'shapeGroup',
@@ -1180,7 +1188,7 @@ class SketchShapeGroup(SketchLayer):
   + userInfo: {}
   + style: SketchStyle,
   + hasClickThrough: bool,
-  # layers: [SketchLayer],
+  # layers: [SketchLayer], # Implemented by inherited SketchLayer
   + clippingMaskMode: number,
   + hasClippingMask: bool,
   + windingRule: number
@@ -1210,7 +1218,7 @@ class SketchShapeGroup(SketchLayer):
     'clippingMaskMode': (asInt, 0),
     'hasClippingMask': (asBool, False),
     'windingRule': (asInt, 1),
-    'layers': (asList, []),
+    #'layers': (asList, []), # Implemented by inherited SketchLayer
   }
 
 class SketchPath(SketchBase):
@@ -1287,7 +1295,7 @@ class SketchArtboard(SketchLayer):
   + shouldBreakMaskChain: bool,
   + style: SketchStyle,
   + hasClickThrough: bool,
-  # layers: [SketchLayer],
+  # layers: [SketchLayer], # Implemented by inherited SketchLayer
   + backgroundColor: SketchColor,
   + hasBackgroundColor: bool,
   + horizontalRulerData: SketchRulerData,
@@ -1462,7 +1470,7 @@ class SketchGroup(SketchLayer):
   rotation: number,
   shouldBreakMaskChain: bool,
   hasClickThrough: bool,
-  # layers: [SketchLayer]
+  # layers: [SketchLayer] # Implemented by inherited SketchLayer
   """
   CLASS = 'group'
   ATTRS = {
@@ -1706,7 +1714,7 @@ type SketchSymbolMaster = {
   isLocked: bool,
   isVisible: bool,
   layerListExpandedType: number,
-  layers: SketchLayerList,
+  #layers: SketchLayerList, # Implemented by inherited SketchLayer
   name: string,
   nameIsFixed: bool,
   resizingType: number,
@@ -1766,7 +1774,7 @@ class SketchPage(SketchLayer):
   + isLocked: bool,
   + isVisible: bool,
   + layerListExpandedType: number,
-  # layers: [SketchSymbolMaster],
+  # layers: [SketchSymbolMaster], # Implemented by inherited SketchLayer
   + name: string,
   + nameIsFixed: bool,
   + resizingConstraint: number,

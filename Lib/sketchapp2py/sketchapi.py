@@ -212,16 +212,42 @@ class SketchApi:
         """
         return self.sketchFile.orderedPages
 
-    def getArtboards(self):
+    def getArtboards(self, page=None):
         """Answer the list of artboards on the current page.
 
+        >>> api = SketchApi()
+        >>> api.getArtboards()
+        [<SketchArtboard name=Artboard 1 w=576 h=783>]
         """
-        if self.page is None:
-            self.page = self.selectPage(0)
+        if page is None:
+            page = self.selectPage(0)
 
-        if self.page is not None:
-            return self.page.find(_class=SketchArtboard)
+        if page is not None:
+            return page.find(_class=SketchArtboard)
         return []
+
+    def getIdLayers(self):
+        """Recursively run though all layers, answer the dictionary of
+        {layer.do_objectID: layer, ...}
+
+        >>> api = SketchApi()
+        >>> len(api.getIdLayers())
+        1
+        """
+        idLayers = {}
+        for page in self.pages:
+            self._getIdLayers(page, idLayers)
+        return idLayers
+
+    def _getIdLayers(self, parentLayer, idLayers):
+        """Recursively run though all layers, answer the dictionary of
+        {layer.do_objectID: layer, ...}
+        """
+        for layer in parentLayer.layers:
+            idLayers[layer.do_objectID] = layer
+            if hasattr(layer, 'layers'):
+                self._getIdLayers(layer, idLayers)
+        return idLayers
 
     def frameDuration(self, v):
         pass
