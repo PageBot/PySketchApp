@@ -44,7 +44,7 @@ class SketchApi:
     >>> api
     <SketchApi path=Template.sketch>
     >>> api.sketchFile
-    <sketchFile>
+    <SketchFile path=Template.sketch>
     >>> api.sketchFile.path.endswith('/Resources/Template.sketch')
     True
     >>> api.filePath == api.sketchFile.path
@@ -53,19 +53,19 @@ class SketchApi:
     >>> api = SketchApi(path)
     >>> page = api.selectPage(0)
     >>> page, api.page
-    (<page name=Page 1>, <page name=Page 1>)
+    (<SketchPage name=Page 1>, <SketchPage name=Page 1>)
     >>> page.name 
     'Page 1'
     >>> len(page.layers[0]), page.artBoards, len(page.artBoards[0])
-    (6, [<artboard name=Artboard 1>], 6)
+    (6, [<SketchArtboard name=Artboard 1 w=576 h=783>], 6)
     >>> artBoard = page.artBoards[0]
     >>> e = artBoard.layers[3]
     >>> e, e.name
-    (<rectangle name=Rectangle Middle Right>, 'Rectangle Middle Right')
+    (<SketchRectangle name=Rectangle Middle Right>, 'Rectangle Middle Right')
     >>> e = page.find(pattern='Top Left')[0]
-    >>> e.name, e.frame, e.x, e.y, e.w, e.h
-    ('Rectangle Top Left', <rect x=60 y=0>, 60, 0, 216, 168)
-    >>> e.style['fills']   
+    >>> e.name, e.frame
+    ('Rectangle Top Left', <SketchRect x=60 y=0 w=216 h=168>)
+    >>> #e.style['fills']   
     """
     def __init__(self, path=None):
         if path is None:
@@ -105,12 +105,12 @@ class SketchApi:
         ...     os.mkdir('_export')
         >>> api = SketchApi()
         >>> api.selectLayer(name='Artboard 1')
-        <artboard name=Artboard 1>
+        <SketchArtboard name=Artboard 1 w=576 h=783>
         >>> api.rect(x=100, y=110, width=200, height=210, name='Rectangle')
-        <shapeGroup name=Rectangle>
+        <SketchShapeGroup name=Rectangle>
         >>> api.save('_export/Save.sketch')
         >>> api.sketchFile
-        <sketchFile>
+        <SketchFile path=Template.sketch>
         """
         if path is None:
             path = self.path
@@ -133,7 +133,7 @@ class SketchApi:
         >>> len(layers)
         1
         >>> g.style.fills[0]
-        <color red=0 green=0 blue=0.5 alpha=0>
+        <SketchColor red=0 green=0 blue=0.5 alpha=0>
         """
         assert self.layer is not None
         if w is None:
@@ -148,20 +148,30 @@ class SketchApi:
         self.layer.append(g)
         return g
 
+    def _get_pages(self):
+        """Answer the list with SketchPage instanges, read from the file.
+
+        >>> api = SketchApi()
+        >>> api.pages
+        [<SketchPage name=Page 1>]
+        """
+        return self.sketchFile.orderedPages
+    pages = property(_get_pages)
+
     def selectPage(self, index):
-        """Selectt the page with this index. Answer None if the page does not exist.
+        """Select the page with this index. Answer None if the page does not exist.
 
         >>> api = SketchApi()
         >>> len(api.sketchFile.pages)
         1
         >>> api.selectPage(0)
-        <page name=Page 1>
+        <SketchPage name=Page 1>
         >>> api.selectLayer(name='Artboard 1')
-        <artboard name=Artboard 1>
+        <SketchArtboard name=Artboard 1 w=576 h=783>
         >>> r = api.rect(x=0, y=0, width=100, height=100)
         >>> api.save('_export/SelectPage.sketch')
         """
-        self.page = page = self.sketchFile.orderedPages[index]
+        self.page = page = self.pages[index]
         return page
 
     def selectLayer(self, _class=None, name=None, pattern=None):
@@ -171,10 +181,10 @@ class SketchApi:
         >>> api = SketchApi()
         >>> page = api.selectPage(0)
         >>> api.selectLayer(name='Artboard 1')
-        <artboard name=Artboard 1>
+        <SketchArtboard name=Artboard 1 w=576 h=783>
         >>> artboard = api.selectLayer(pattern='board')
         >>> artboard
-        <artboard name=Artboard 1>
+        <SketchArtboard name=Artboard 1 w=576 h=783>
         """
         if self.page is None:
             self.page = self.selectPage(0)
@@ -184,6 +194,60 @@ class SketchApi:
             if layers:
                 self.layer = layers[0] # Select the first that matches.
         return self.layer
+
+    def getSize(self):
+        w = h = 0
+        for page in self.getPages():
+            for artboard in page.layers:
+                w = max(w, artboard.frame.width - artboard.frame.x)
+                h = max(h, artboard.frame.height - artboard.frame.y)
+        return w, h
+
+    def getPages(self):
+        """Answer the list of SketchPage instances.
+
+        >>> api = SketchApi()
+        >>> api.getPages()
+        [<SketchPage name=Page 1>]
+        """
+        return self.sketchFile.orderedPages
+
+    def getArtboards(self, page=None):
+        """Answer the list of artboards on the current page.
+
+        >>> api = SketchApi()
+        >>> api.getArtboards()
+        [<SketchArtboard name=Artboard 1 w=576 h=783>]
+        """
+        if page is None:
+            page = self.selectPage(0)
+
+        if page is not None:
+            return page.find(_class=SketchArtboard)
+        return []
+
+    def getIdLayers(self):
+        """Recursively run though all layers, answer the dictionary of
+        {layer.do_objectID: layer, ...}
+
+        >>> api = SketchApi()
+        >>> len(api.getIdLayers())
+        1
+        """
+        idLayers = {}
+        for page in self.pages:
+            self._getIdLayers(page, idLayers)
+        return idLayers
+
+    def _getIdLayers(self, parentLayer, idLayers):
+        """Recursively run though all layers, answer the dictionary of
+        {layer.do_objectID: layer, ...}
+        """
+        for layer in parentLayer.layers:
+            idLayers[layer.do_objectID] = layer
+            if hasattr(layer, 'layers'):
+                self._getIdLayers(layer, idLayers)
+        return idLayers
 
     def frameDuration(self, v):
         pass
@@ -226,10 +290,10 @@ class SketchApi:
         >>> api = SketchApi()
         >>> page = api.selectPage(0)
         >>> api.selectLayer(name='Artboard 1')
-        <artboard name=Artboard 1>
+        <SketchArtboard name=Artboard 1 w=576 h=783>
         >>> artboard = api.selectLayer(pattern='board')
         >>> artboard
-        <artboard name=Artboard 1>
+        <SketchArtboard name=Artboard 1 w=576 h=783>
         >>> layers = artboard.layers
         >>> len(layers)
         0
@@ -237,7 +301,7 @@ class SketchApi:
         >>> len(layers)
         1
         >>> layers[0].style.fills
-        [<color red=1 green=0 blue=0.5 alpha=0.25>]
+        [<SketchColor red=1 green=0 blue=0.5 alpha=0.25>]
         """
         if w is None:
             w = DEFAULT_WIDTH
@@ -268,10 +332,10 @@ class SketchApi:
         >>> api = SketchApi()
         >>> page = api.selectPage(0)
         >>> api.selectLayer(name='Artboard 1')
-        <artboard name=Artboard 1>
+        <SketchArtboard name=Artboard 1 w=576 h=783>
         >>> artboard = api.selectLayer(pattern='board')
         >>> artboard
-        <artboard name=Artboard 1>
+        <SketchArtboard name=Artboard 1 w=576 h=783>
         >>> layers = artboard.layers
         >>> len(layers)
         0
@@ -279,7 +343,7 @@ class SketchApi:
         >>> len(layers)
         1
         >>> r.style.fills
-        [<color red=1 green=0 blue=0 alpha=0.5>]
+        [<SketchColor red=1 green=0 blue=0 alpha=0.5>]
         """
         if w is None:
             w = DEFAULT_WIDTH

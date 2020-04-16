@@ -47,21 +47,21 @@ class SketchAppReader(SketchAppBase):
     >>> page.name
     'Page 1'
     >>> page.frame 
-    <rect x=0 y=0>
+    <SketchRect x=0 y=0 w=0 h=0>
     >>> page.isLocked
     False
     >>> page.isVisible
     True
     >>> page.exportOptions
-    <exportOptions>
+    <SketchExportOptions>
     >>> artboard = page.layers[0]
     >>> artboard
-    <artboard name=Artboard1>
+    <SketchArtboard name=Artboard1 w=576 h=783>
     >>> artboard.layers
-    [<star name=Star>]
+    [<SketchStar name=Star>]
     >>> bitmap = artboard.layers[0]
     >>> bitmap.frame
-    <rect x=60 y=181>
+    <SketchRect x=60 y=181 w=345 h=345>
     """
 
     assert path.endswith('.'+FILETYPE_SKETCH)

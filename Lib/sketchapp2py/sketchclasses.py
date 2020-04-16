@@ -126,26 +126,26 @@ class SketchBase:
 
     >>> d = dict(x=100, y=200, width=300, height=400)
     >>> SketchRect(**d)
-    <rect x=100 y=200 w=300 h=300>
+    <SketchRect x=100 y=200 w=300 h=400>
     >>> SketchRect(x=100, y=300)
-    <rect x=100 y=300 w=1 h=1>
+    <SketchRect x=100 y=300 w=100 h=100>
 
-    >>> frame = dict(x=20, y=30)
+    >>> frame = dict(x=20, y=30, w=100, h=200)
     >>> artboard = SketchArtboard(frame=frame)
     >>> artboard
-    <artboard name=Artboard>
+    <SketchArtboard name=Artboard w=100 h=100>
     >>> artboard.frame
-    <rect x=20 y=30 w=1 h=1>
+    <SketchRect x=20 y=30 w=100 h=100>
 
     >>> frame = dict(width=400, height=500)
     >>> page = SketchPage(frame=frame)
     >>> page.frame
-    <rect x=0 y=0 w=400 h=400>
+    <SketchRect x=0 y=0 w=400 h=500>
 
     >>> frame = dict(x=10, y=20, width=30, height=40)
     >>> artboard = SketchArtboard(frame=frame)
     >>> artboard.frame
-    <rect x=10 y=20 w=30 h=30>
+    <SketchRect x=10 y=20 w=30 h=40>
     """
     for name, value in kwargs.items(): 
         # If not part of the Sketch ATTRS attribute, just set value unchanged.
@@ -169,7 +169,7 @@ class SketchBase:
       setattr(self, name, value)
 
   def __repr__(self):
-    s = ['<%s' % (self._class or '')]
+    s = ['<%s' % (self.__class__.__name__ or '')]
     for attrName in self.REPR_ATTRS:
       if hasattr(self, attrName):
         s.append('%s=%s' % (attrName, getattr(self, attrName)))
@@ -214,12 +214,20 @@ class SketchBase:
     >>> p = SketchPoint(x=0, y=200, name='myPoint') # Set attribute, different from ATTRS
     >>> p.name
     'myPoint'
-    >>> p.find(name='myPoint')[0] is p
+    >>> p.find(name='myPoint')[0] is p # Search by exact name
+    True
+    >>> p.find(name='myPts')# Search by exact name
+    []
+    >>> p.find(pattern='myPo')[0] is p # Search by name pattern
+    True
+    >>> p.find(_class=SketchPoint)[0] is p
+    True
+    >>> p.find(_class=SketchPoint.CLASS)[0] is p
     True
     """
     if found is None:
       found = []
-    if (_class is not None and self._class == _class) or \
+    if (_class in (self.__class__, self.CLASS)) or \
        (name is not None and hasattr(self, 'name') and self.name == name) or \
        (pattern is not None and hasattr(self, 'name') and pattern in self.name):
       found.append(self)
@@ -349,11 +357,11 @@ def SketchPositionString(v):
   them here, before creating a real SketchPoint instance.
 
   >>> SketchPositionString('{0, 0}')
-  <point x=0 y=0>
+  <SketchPoint x=0 y=0>
   >>> SketchPositionString('{0000021, -12345}')
-  <point x=21 y=-12345>
+  <SketchPoint x=21 y=-12345>
   >>> SketchPositionString('{10.05, -10.66}')
-  <point x=10.05 y=-10.66>
+  <SketchPoint x=10.05 y=-10.66>
   
   """
   sxy = POINT_PATTERN.findall(v)
@@ -364,11 +372,11 @@ class SketchPoint(SketchBase):
   """Interpret the {x,y} string into a point2D.
 
   >>> SketchPoint(x=10, y=20)
-  <point x=10 y=20>
+  <SketchPoint x=10 y=20>
   >>> SketchPoint(x=21, y=-12345)
-  <point x=21 y=-12345>
+  <SketchPoint x=21 y=-12345>
   >>> SketchPoint(x=10.05, y=-10.66)
-  <point x=10.05 y=-10.66>
+  <SketchPoint x=10.05 y=-10.66>
   """
   REPR_ATTRS = ['x', 'y'] # Attributes to be show in __repr__
   CLASS = 'point'
@@ -458,10 +466,10 @@ class SketchBorder(SketchBase):
 
   >>> color = SketchColor(red=1)
   >>> color
-  <color red=1 green=0 blue=0 alpha=0>
+  <SketchColor red=1 green=0 blue=0 alpha=0>
   >>> border = SketchBorder(color=color, fillType=1)
   >>> border.color
-  <color red=1 green=0 blue=0 alpha=0>
+  <SketchColor red=1 green=0 blue=0 alpha=0>
   >>> border.fillType
   1
   """
@@ -514,10 +522,10 @@ class SketchGradientStop(SketchBase):
   >>> color = SketchColor(blue=1) 
   >>> gs = SketchGradientStop(color=color, position=1)
   >>> gs.color, gs.position
-  (<color red=0 green=0 blue=1 alpha=0>, 1)
+  (<SketchColor red=0 green=0 blue=1 alpha=0>, 1)
   >>> gs = SketchGradientStop()
   >>> gs.color, gs.position
-  (<color red=0 green=0 blue=0 alpha=1>, 0)
+  (<SketchColor red=0 green=0 blue=0 alpha=1>, 0)
   """
   CLASS = 'gradientStop'
   ATTRS = {
@@ -715,8 +723,8 @@ class SketchRect(SketchBase):
     'do_objectID': (asId, None),
     'x': (asNumber, 0),
     'y': (asNumber, 0),
-    'width': (asNumber, 1),
-    'height': (asNumber, 1),
+    'width': (asNumber, 100),
+    'height': (asNumber, 100),
     'constrainProportions': (asBool, False),
   }
   def __getitem__(self, i):
@@ -733,7 +741,7 @@ class SketchRect(SketchBase):
   w = property(_get_w, _set_w)
   
   def _get_h(self):
-    return self.width
+    return self.height
   def _set_h(self, h):
     self.height = h
   h = property(_get_h, _set_h)
@@ -1120,7 +1128,7 @@ class SketchLayer(SketchBase):
     return self.layers[layerIndex]
 
   def __len__(self):
-    """Answer the number of layer that this SKetchLayer is holding"""
+    """Answer the number of layers that this SketchLayer is holding"""
     return len(self.layers)
 
   def append(self, layer):
@@ -1156,7 +1164,7 @@ class SketchLayer(SketchBase):
     for layer in self.layers:
       layers.append(layer.asJson())
     return d
-
+   
 class SketchShapeGroup(SketchLayer):
   """
   _class: 'shapeGroup',
@@ -1180,7 +1188,7 @@ class SketchShapeGroup(SketchLayer):
   + userInfo: {}
   + style: SketchStyle,
   + hasClickThrough: bool,
-  # layers: [SketchLayer],
+  # layers: [SketchLayer], # Implemented by inherited SketchLayer
   + clippingMaskMode: number,
   + hasClippingMask: bool,
   + windingRule: number
@@ -1210,7 +1218,7 @@ class SketchShapeGroup(SketchLayer):
     'clippingMaskMode': (asInt, 0),
     'hasClippingMask': (asBool, False),
     'windingRule': (asInt, 1),
-    'layers': (asList, []),
+    #'layers': (asList, []), # Implemented by inherited SketchLayer
   }
 
 class SketchPath(SketchBase):
@@ -1287,7 +1295,7 @@ class SketchArtboard(SketchLayer):
   + shouldBreakMaskChain: bool,
   + style: SketchStyle,
   + hasClickThrough: bool,
-  # layers: [SketchLayer],
+  # layers: [SketchLayer], # Implemented by inherited SketchLayer
   + backgroundColor: SketchColor,
   + hasBackgroundColor: bool,
   + horizontalRulerData: SketchRulerData,
@@ -1331,6 +1339,8 @@ class SketchArtboard(SketchLayer):
     'layout': (SketchLayoutGrid, None),
     'resizesContent': (asBool, True),
   }
+  def __repr__(self):
+    return '<%s name=%s w=%d h=%d>' % (self.__class__.__name__, self.name, self.frame.w, self.frame.h)   
 
 class SketchBitmap(SketchBase):
   """
@@ -1418,7 +1428,28 @@ class SketchSymbolInstance(SketchBase):
   """
   CLASS = 'symbolInstance'
   ATTRS = {
-
+    'do_objectID': (asId, None),
+    'exportOptions': (SketchExportOptions, {}),
+    'frame': (SketchRect, BASE_FRAME),
+    'isFlippedHorizontal': (asBool, False),
+    'isFlippedVertical': (asBool, False),
+    'isFixedToViewport': (asBool, False),
+    'isLocked': (asBool, False),
+    'isVisible': (asBool, True),
+    'layerListExpandedType': (asInt, 0),
+    'name': (asString, ''),
+    'nameIsFixed': (asBool, False),
+    'resizingType': (asInt, 0),
+    'rotation': (asNumber, 0),
+    'shouldBreakMaskChain': (asBool, False),
+    'style': (SketchStyle, None),
+    'horizontalSpacing': (asInt, 0), # Or {} ??
+    'masterInfluenceEdgeMaxXPadding': (asNumber, 0),
+    'masterInfluenceEdgeMaxYPadding': (asNumber, 0),
+    'masterInfluenceEdgeMinXPadding': (asNumber, 0),
+    'masterInfluenceEdgeMinYPadding': (asNumber, 0),
+    'symbolID': (asId, None),
+    'verticalSpacing': (asInt, 0), # Or {} ??
   }
 
 class SketchGroup(SketchLayer):
@@ -1439,7 +1470,7 @@ class SketchGroup(SketchLayer):
   rotation: number,
   shouldBreakMaskChain: bool,
   hasClickThrough: bool,
-  # layers: [SketchLayer]
+  # layers: [SketchLayer] # Implemented by inherited SketchLayer
   """
   CLASS = 'group'
   ATTRS = {
@@ -1683,7 +1714,7 @@ type SketchSymbolMaster = {
   isLocked: bool,
   isVisible: bool,
   layerListExpandedType: number,
-  layers: SketchLayerList,
+  #layers: SketchLayerList, # Implemented by inherited SketchLayer
   name: string,
   nameIsFixed: bool,
   resizingType: number,
@@ -1743,7 +1774,7 @@ class SketchPage(SketchLayer):
   + isLocked: bool,
   + isVisible: bool,
   + layerListExpandedType: number,
-  # layers: [SketchSymbolMaster],
+  # layers: [SketchSymbolMaster], # Implemented by inherited SketchLayer
   + name: string,
   + nameIsFixed: bool,
   + resizingConstraint: number,
@@ -1865,7 +1896,7 @@ class SketchFile(SketchBase):
     self.meta = None
 
   def __repr__(self):
-    return '<%s path=%s>' % (self.__class__.__name__, self.path.split('.')[-1])   
+    return '<%s path=%s>' % (self.__class__.__name__, self.path.split('/')[-1])   
 
   def find(self, _class=None, name=None, pattern=None):
     found = []
