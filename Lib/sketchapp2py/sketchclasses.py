@@ -175,6 +175,29 @@ class SketchBase:
         s.append('%s=%s' % (attrName, getattr(self, attrName)))
     return ' '.join(s) + '>'
 
+  def __eq__(self, sko):
+    """Answer the boolean flag if self and SketchBase object have
+    the same attribute values.
+
+    >>> p1 = SketchPoint(x=10, y=20)
+    >>> p2 = SketchPoint(y=20, x=10)
+    >>> p1 == p2
+    True
+    >>> p2.x = 100
+    >>> p1 == p2
+    False
+    """
+    if not isinstance(sko, self.__class__):
+      return False
+    for name in self.__dict__.keys():
+      if getattr(self, name) != getattr(sko, name):
+        print('XXX', name, self, getattr(self, name), sko, getattr(sko, name))
+        return False
+    return True
+
+  def __ne__(self, sko):
+    return not (self == sko)
+
   def _get_parent(self):
     if self._parent is not None:
       return self._parent() # Get weakref to parent node
@@ -991,10 +1014,13 @@ class SketchParagraphStyle(SketchBase):
   """
   _class: 'paragraphStyle',
   alignments: number,
+  maximumLineHeight: number,
   """
   CLASS = 'paragraphStyle'
   ATTRS = {
     'alignment': (asInt, 2),
+    'minimumLineHeight': (asInt, 100),
+    'maximumLineHeight': (asInt, 100),
   }
 
 class SketchAttributes(SketchBase):
