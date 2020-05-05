@@ -1013,14 +1013,17 @@ class SketchFontDescriptor(SketchBase):
 class SketchParagraphStyle(SketchBase):
   """
   _class: 'paragraphStyle',
-  alignments: number,
+  alignment: number,
+  minimumLineHeight: number,
   maximumLineHeight: number,
+  paragraphSpacing: number,
   """
   CLASS = 'paragraphStyle'
   ATTRS = {
     'alignment': (asInt, 2),
-    'minimumLineHeight': (asInt, 100),
-    'maximumLineHeight': (asInt, 100),
+    'minimumLineHeight': (asNumber, 100),
+    'maximumLineHeight': (asNumber, 100),
+    'paragraphSpacing': (asNumber, 1),
   }
 
 class SketchAttributes(SketchBase):
@@ -1037,7 +1040,7 @@ class SketchAttributes(SketchBase):
     'MSAttributedStringColorAttribute': (SketchColor, BLACK_COLOR),
     'textStyleVerticalAlignmentKey': (asInt, 0),
     'kerning': (asNumber, 0), # Wrong name for tracking
-    'paragraphStyle': (SketchParagraphStyle, None),
+    'paragraphStyle': (SketchParagraphStyle, {}),
   }
 
 class SketchStringAttribute(SketchBase):
@@ -1737,13 +1740,13 @@ class SketchSymbolMaster(SketchBase):
   """
   CLASS = 'symbolMaster'
   ATTRS = {
-    'backgroundColor': SketchColor,
+    'backgroundColor': (SketchColor, None),
     'do_objectID': (asId, None),
     'exportOptions': (SketchExportOptions, []),
     'frame': (SketchRect, BASE_FRAME),
     'hasBackgroundColor': (asBool, False),
     'hasClickThrough': (asBool, False),
-    'horizontalRulerData': SketchRulerData,
+    'horizontalRulerData': (SketchRulerData, {}),
     'includeBackgroundColorInExport': (asBool, False),
     'includeBackgroundColorInInstance': (asBool, False),
     'includeInCloudUpload': (asBool, False),
