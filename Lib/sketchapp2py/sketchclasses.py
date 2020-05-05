@@ -191,7 +191,7 @@ class SketchBase:
       return False
     for name in self.__dict__.keys():
       if getattr(self, name) != getattr(sko, name):
-        print('XXX', name, self, getattr(self, name), sko, getattr(sko, name))
+        #print('XXX', name, self, getattr(self, name), sko, getattr(sko, name))
         return False
     return True
 
@@ -1707,25 +1707,10 @@ class SketchPolygon(SketchBase):
     'points': (SketchCurvePointList, []),
   }
 
-# Conversion of Sketch layer class name to Python class.
-SKETCHLAYER_PY = {
-  'text': SketchText,
-  'shapeGroup': SketchShapeGroup,
-  'shapePath': SketchShapePath,
-  'bitmap': SketchBitmap,
-  'artboard': SketchArtboard,
-  'symbolInstance': SketchSymbolInstance,
-  'group': SketchGroup,
-  'rectangle': SketchRectangle,
-  'oval': SketchOval,
-  'star': SketchStar,
-  'polygon': SketchPolygon,
-}
-
-'''
-type SketchSymbolMaster = {
-  backgroundColor: SketchColor,
+class SketchSymbolMaster(SketchBase):
+  """
   _class: 'symbolMaster',
+  backgroundColor: SketchColor,
   do_objectID: UUID,
   exportOptions: [SketchExportOptions],
   frame: SketchRect,
@@ -1749,8 +1734,51 @@ type SketchSymbolMaster = {
   style: SketchStyle,
   symbolID: UUID,
   verticalRulerData: SketchRulerData
+  """
+  CLASS = 'symbolMaster'
+  ATTRS = {
+    'backgroundColor': SketchColor,
+    'do_objectID': (asId, None),
+    'exportOptions': (SketchExportOptions, []),
+    'frame': (SketchRect, BASE_FRAME),
+    'hasBackgroundColor': (asBool, False),
+    'hasClickThrough': (asBool, False),
+    'horizontalRulerData': SketchRulerData,
+    'includeBackgroundColorInExport': (asBool, False),
+    'includeBackgroundColorInInstance': (asBool, False),
+    'includeInCloudUpload': (asBool, False),
+    'isFlippedHorizontal': (asBool, False),
+    'isFlippedVertical': (asBool, False),
+    'isLocked': (asBool, False),
+    'isVisible': (asBool, True),
+    'layerListExpandedType': (asInt, 0),
+    #layers: SketchLayerList, # Implemented by inherited SketchLayer
+    'name': (asString, CLASS),
+    'nameIsFixed': (asBool, False),
+    'resizingType': (asNumber, 0),
+    'rotation': (asNumber, 0),
+    'shouldBreakMaskChain': (asBool, False),
+    'style': (SketchStyle, None),
+    'symbolID': (asId, None),
+    'verticalRulerData': (SketchRulerData, {}),
+  }
+
+# Conversion of Sketch layer class name to Python class.
+SKETCHLAYER_PY = {
+  'text': SketchText,
+  'shapeGroup': SketchShapeGroup,
+  'shapePath': SketchShapePath,
+  'bitmap': SketchBitmap,
+  'artboard': SketchArtboard,
+  'symbolInstance': SketchSymbolInstance,
+  'symbolMaster': SketchSymbolMaster,
+  'group': SketchGroup,
+  'rectangle': SketchRectangle,
+  'oval': SketchOval,
+  'star': SketchStar,
+  'polygon': SketchPolygon,
 }
-'''
+
 # document.json
 class SketchDocument(SketchBase):
   """
