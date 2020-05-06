@@ -273,7 +273,7 @@ class SketchApi:
     lineTo = moveTo
 
     def curveTo(self, bcp1, bcp2, p):
-        pass
+        print('Sketch.curveto not implented yet', bcp1, bcp2, p)
 
     def openTypeFeatures(self, **openTypeFeatures):
         pass
@@ -282,7 +282,7 @@ class SketchApi:
         pass
 
     def line(self, p1, p2):
-        pass
+        print('Sketch.line not implented yet', p1, p2)
 
     def oval(self, x, y, w, h, name=None, **kwargs):
         """Draw the oval with current fill and stroke.
@@ -416,10 +416,11 @@ class SketchApi:
 
     def imageSize(self, path):
         """Answers the image size of our test image
-
+        NOT TO BE IMPLEMENTED HERE,
+        Use generic context method instead.
         path = getResourcesPath() + '/images/peppertom_lowres_398x530.png'
         """
-        return 398, 530
+        return None
 
     def clipPath(self, clipPath):
         pass
@@ -433,10 +434,10 @@ class SketchApi:
     def rotate(self, angle, center=None):
         pass
 
-    def text(self, s, p):
+    def drawString(self, bs, p):
         pass
 
-    def textBox(self, s, r):
+    def drawText(self, s, r):
         pass
 
 
