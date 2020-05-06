@@ -412,9 +412,9 @@ class SketchApi:
         pass
 
     def image(self, path, p, pageNumber=0, alpha=None):
-        pass
+        print('Sketch.image not implented yet', path, p)
 
-    def imageSize(self, path):
+    def XXXimageSize(self, path):
         """Answers the image size of our test image
         NOT TO BE IMPLEMENTED HERE,
         Use generic context method instead.
@@ -435,10 +435,10 @@ class SketchApi:
         pass
 
     def drawString(self, bs, p):
-        pass
+        print('Sketch.drawString not implented yet', bs, p)
 
     def drawText(self, s, r):
-        pass
+        print('Sketch.drawText not implented yet', bs, p)
 
 
 if __name__ == '__main__':

@@ -1021,8 +1021,8 @@ class SketchParagraphStyle(SketchBase):
   CLASS = 'paragraphStyle'
   ATTRS = {
     'alignment': (asInt, 2),
-    'minimumLineHeight': (asNumber, 100),
-    'maximumLineHeight': (asNumber, 100),
+    'minimumLineHeight': (asNumber, 0),
+    'maximumLineHeight': (asNumber, 0),
     'paragraphSpacing': (asNumber, 1),
   }
 
