@@ -1150,7 +1150,10 @@ class SketchLayer(SketchBase):
     self.layers = [] # List of Sketch element instances.
     for layerDict in kwargs.get('layers', []):
       # Create new layer
-      self.layers.append(SKETCHLAYER_PY[layerDict['_class']](**layerDict))
+      if not layerDict['_class'] in SKETCHLAYER_PY:
+        print('SketchLayer: Layer class "%s" not implemented' % layerDict['_class'])
+      else:
+        self.layers.append(SKETCHLAYER_PY[layerDict['_class']](**layerDict))
 
   def __getitem__(self, layerIndex):
     """In case the layer has layers, then answer them by index."""
@@ -1193,7 +1196,22 @@ class SketchLayer(SketchBase):
     for layer in self.layers:
       layers.append(layer.asJson())
     return d
-   
+
+class SketchSlice(SketchLayer):
+  """
+  _class: 'slice',
+  + hasBackgroundColor: bool,
+  + backgroundColor: SketchColor,
+  + frame: SketchRect,
+  """
+  CLASS = 'slice'
+  ATTRS = {
+    'do_objectID': (asId, None),
+    'frame': (SketchRect, BASE_FRAME),
+    'backgroundColor': (SketchColor, None),
+    'hasBackgroundColor': (asBool, False),
+  }
+
 class SketchShapeGroup(SketchLayer):
   """
   _class: 'shapeGroup',
@@ -1769,6 +1787,7 @@ class SketchSymbolMaster(SketchBase):
 # Conversion of Sketch layer class name to Python class.
 SKETCHLAYER_PY = {
   'text': SketchText,
+  'slice': SketchSlice,
   'shapeGroup': SketchShapeGroup,
   'shapePath': SketchShapePath,
   'bitmap': SketchBitmap,
