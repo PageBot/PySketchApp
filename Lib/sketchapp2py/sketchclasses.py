@@ -160,6 +160,8 @@ class SketchBase:
       if isclass(m):
         if isinstance(value, m):
           pass # Already SketchBase instance, leave untouched
+        elif value is None:
+          value = m()
         elif not isinstance(value, dict):
           value = {name: value}
         else:
@@ -1296,6 +1298,7 @@ class SketchShapePath(SketchBase):
   isFlippedHorizontal: bool,
   isLocked: bool,
   isVisible: bool,
+  isClosed: bool
   layerListExpandedType: number,
   name: string,
   nameIsFixed: bool,
@@ -1305,19 +1308,34 @@ class SketchShapePath(SketchBase):
   booleanOperation: number,
   edited: bool,
   path: SketchPathOptional
+  shouldBreakMaskChain: bool,
+  edited: bool,
+  pointRadiusBehaviour: number,
+  points: SketchCurvePointList,
+  path: SketchPathOptional,
+
   """
   CLASS = 'shapePath'
   ATTRS = {
     'do_objectID': (asId, None),
     'exportOptions': (SketchExportOptions, {}),
     'frame': (SketchRect, BASE_FRAME),
+    'booleanOperation': (asInt, -1),
     'isFlippedHorizontal': (asBool, False),
+    'isFlippedVertical': (asBool, False),
+    'resizingConstraint': (asInt, 63), # ?? value
+    'resizingType': (asBool, False),
     'isLocked': (asBool, False),
     'isVisible': (asBool, True),
+    'isClosed': (asBool, False),
+    'edited': (asBool, True),
+    'rotation': (asNumber, 0),
     'layerListExpandedType': (asInt, 0),
     'name': (asString, ''),
     'nameIsFixed': (asBool, False),
-    'resizing': (asBool, False),
+    'shouldBreakMaskChain': (asBool, False),
+    'pointRadiusBehaviour': (asInt, 1),
+    'points': (SketchCurvePointList, []),
     'path': (SketchPathOptional, {}),
   }
 
