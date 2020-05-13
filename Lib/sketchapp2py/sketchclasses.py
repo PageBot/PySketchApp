@@ -808,7 +808,7 @@ class SketchColorControls(SketchBase):
   hue: number,
   saturation: number
   """
-  CLASS = 'colorConstrols'
+  CLASS = 'colorControls'
   ATTRS = {
     'isEnabled': (asBool, True),
     'brightness': (asNumber, 1),
@@ -1135,7 +1135,7 @@ class SketchText(SketchBase):
     'rotation': (asNumber, 0),
     'shouldBreakMaskChain': (asBool, False),
     'userInfo': (asDict, {}),
-    'style': (SketchStyle, {}),
+    'style': (SketchStyle, None),
     'attributedString': (SketchAttributedString, None),
     'automaticallyDrawOnUnderlyingPath': (asBool, False),
     'dontSynchroniseWithSymbol': (asBool, False),
@@ -1581,7 +1581,8 @@ class SketchRectangle(SketchBase):
   points: CurvePointList,
   path: SketchPathOptional,
   fixedRadius: number,
-  hasConvertedToNewRoundCorners: bool
+  hasConvertedToNewRoundCorners: bool,
+  style: SketchStyle,
   """
   CLASS = 'rectangle'
   ATTRS = {
@@ -1607,7 +1608,8 @@ class SketchRectangle(SketchBase):
     'path': (SketchPathOptional, {}),
     'points': (SketchCurvePointList, []),
     'fixedRadius': (asNumber, 0),
-    'hasConvertedToNewRoundCorners': (asBool, True)
+    'hasConvertedToNewRoundCorners': (asBool, True),
+    'style': (SketchStyle, None),
   }
 
 class SketchOval(SketchBase):
