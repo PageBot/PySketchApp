@@ -27,7 +27,7 @@
 #  Webviewer
 #  https://github.com/AnimaApp/sketch-web-viewer
 #
-from sketchapp2py.sketchclasses import *
+from pysketch.sketchclasses import *
 
 class SketchAppWriter(SketchAppBase):
   """

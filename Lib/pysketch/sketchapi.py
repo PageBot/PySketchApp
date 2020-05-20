@@ -31,9 +31,9 @@
 #  https://github.com/AnimaApp/sketch-web-viewer
 #
 import os
-from sketchapp2py.sketchclasses import *
-from sketchapp2py.sketchappreader import SketchAppReader
-from sketchapp2py.sketchappwriter import SketchAppWriter
+from pysketch.sketchclasses import *
+from pysketch.sketchappreader import SketchAppReader
+from pysketch.sketchappwriter import SketchAppWriter
 
 RESOURCES_PATH = '/'.join(__file__.split('/')[:-1])
 RESOURCES_TEMPLATE_PATH = RESOURCES_PATH + '/Resources/Template.sketch' # Default template document.

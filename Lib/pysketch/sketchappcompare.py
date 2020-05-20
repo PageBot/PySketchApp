@@ -19,9 +19,9 @@
 #  Output an oveview of differences.
 #
 import os
-from sketchapp2py.sketchclasses import *
-from sketchapp2py.sketchappreader import SketchAppReader
-from sketchapp2py.sketchappwriter import SketchAppWriter
+from pysketch.sketchclasses import *
+from pysketch.sketchappreader import SketchAppReader
+from pysketch.sketchappwriter import SketchAppWriter
 
 CHECK_ID = False
 
