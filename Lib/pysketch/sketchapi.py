@@ -24,7 +24,7 @@
 #  https://developer.sketch.com/file-format/
 #
 #  https://gist.github.com/xaviervia/edbea95d321feacaf0b5d8acd40614b2
-#  This description is not complete. 
+#  This description is not complete.
 #  Additions made where found in the Reading specification of this context.
 #
 #  Webviewer
@@ -34,9 +34,6 @@ import os
 from pysketch.sketchclasses import *
 from pysketch.sketchappreader import SketchAppReader
 from pysketch.sketchappwriter import SketchAppWriter
-
-RESOURCES_PATH = '/'.join(__file__.split('/')[:-1])
-RESOURCES_TEMPLATE_PATH = RESOURCES_PATH + '/Resources/Template.sketch' # Default template document.
 
 class SketchApi:
     """
@@ -54,7 +51,7 @@ class SketchApi:
     >>> page = api.selectPage(0)
     >>> page, api.page
     (<SketchPage name=Page 1>, <SketchPage name=Page 1>)
-    >>> page.name 
+    >>> page.name
     'Page 1'
     >>> len(page.layers[0]), page.artBoards, len(page.artBoards[0])
     (6, [<SketchArtboard name=Artboard 1 w=576 h=783>], 6)
@@ -65,17 +62,23 @@ class SketchApi:
     >>> e = page.find(pattern='Top Left')[0]
     >>> e.name, e.frame
     ('Rectangle Top Left', <SketchRect x=60 y=0 w=216 h=168>)
-    >>> #e.style['fills']   
+    >>> #e.style['fills']
     """
+
     def __init__(self, path=None):
         if path is None:
-            path = RESOURCES_TEMPLATE_PATH
+            path = self.getTemplatePath()
+
         self.sketchFile = SketchAppReader().read(path)
         self.page = None # Current selected page or artboard
         self.layer = None # Curerent selected layer
         self._fill = None # Current fill color
         self._stroke = None # Current stroke color
         self._path = None # Current open path-plygon to add points to
+
+    def getTemplatePath(self):
+        resourcesPath = '/'.join(__file__.split('/')[:-1])
+        return = resources_path + '/Resources/Template.sketch' # Default template document.
 
     def __repr__(self):
         return '<%s path=%s>' % (self.__class__.__name__, self.sketchFile.path.split('/')[-1])
@@ -311,7 +314,7 @@ class SketchApi:
         style = self._getStyle(**kwargs)
         frame = dict(_class='rect', x=x, y=x, width=w, height=h)
         name = name or DEFAULT_NAME
-        g = SketchShapeGroup(do_objectID=newObjectID(), style=style, frame=frame, 
+        g = SketchShapeGroup(do_objectID=newObjectID(), style=style, frame=frame,
             name=name, **kwargs)
         self.layer.append(g)
 
@@ -353,7 +356,7 @@ class SketchApi:
         style = self._getStyle(**kwargs)
         frame = dict(_class='rect', x=x, y=x, width=w, height=h)
         name = name or DEFAULT_NAME
-        g = SketchShapeGroup(do_objectID=newObjectID(), style=style, frame=frame, 
+        g = SketchShapeGroup(do_objectID=newObjectID(), style=style, frame=frame,
             name=name, **kwargs)
         self.layer.append(g)
 

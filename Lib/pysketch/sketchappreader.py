@@ -21,7 +21,7 @@
 #  https://xaviervia.github.io/sketch2json/
 #
 #  https://gist.github.com/xaviervia/edbea95d321feacaf0b5d8acd40614b2
-#  This description is not complete. 
+#  This description is not complete.
 #  Additions made where found in the Reading specification of this context.
 #
 #  Webviewer
@@ -46,7 +46,7 @@ class SketchAppReader(SketchAppBase):
     'SketchPage'
     >>> page.name
     'Page 1'
-    >>> page.frame 
+    >>> page.frame
     <SketchRect x=0 y=0 w=0 h=0>
     >>> page.isLocked
     False
@@ -72,7 +72,7 @@ class SketchAppReader(SketchAppBase):
     # Construct the directory name to store images. Create the directory if it does not exist.
     # aPath/fileName.sketch --> aPath/fileName_images/
     # Answer the newly constructed image path.
-    imagesPath = skf.imagesPath 
+    imagesPath = skf.imagesPath
     if not os.path.exists(imagesPath):
       os.makedirs(imagesPath)
 
@@ -86,13 +86,13 @@ class SketchAppReader(SketchAppBase):
       skf.document = SketchDocument(parent=skf, **d)
     else:
       return None # Cannot readw this file.
-    
+
     # Set general user info
     if USER_JSON in zipInfo:
       fc = zf.read(USER_JSON).decode("utf-8")
       d = json.loads(fc)
       skf.user = SketchUser(parent=skf, **d)
-       
+
     # Read pages and build self.imagesId2Path dictionary, as we find sId-->name relations.
     for key in zipInfo:
       if key.startswith(PAGES_JSON): # This much be a page.
@@ -107,7 +107,7 @@ class SketchAppReader(SketchAppBase):
       fc = zf.read(META_JSON).decode("utf-8")
       d = json.loads(fc)
       skf.meta = SketchMeta(parent=skf, **d)
- 
+
     # Find all images used in the file tree, so we can save them with their layer name.
     # Note that for now this is not a safe method, in case there are layers with
     # the same name in the document that refer to different bitmap files.
@@ -135,8 +135,8 @@ class SketchAppReader(SketchAppBase):
         fbm.close()
 
     # Save any previews in the _images/ directory too.
-    # Note that there may be an potential naming conflict here, in case a layer is called 
-    # "preview". 
+    # Note that there may be an potential naming conflict here, in case a layer is called
+    # "preview".
     # TODO: To be solved later.
     for key in zipInfo:
       if key.startswith(PREVIEWS_JSON): # This is a preview image
@@ -146,7 +146,6 @@ class SketchAppReader(SketchAppBase):
         fp.close()
 
     return skf
-
 
 if __name__ == '__main__':
   import doctest
