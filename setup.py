@@ -1,13 +1,13 @@
 from setuptools import setup
 
 setup(
-    name='sketchapp2py',
+    name='pysketch',
     version="0.1",
     description="A Pythonic wrapper around Sketch.",
     author="Petr van Blokland",
     author_email="buro@petr.com",
-    url="https://github.com/PageBot/SketchApp2Py.git",
+    url="https://github.com/PageBot/PySketch.git",
     license="MIT",
-    packages=["sketchapp2py"],
+    packages=["pysketch"],
     package_dir={"": "Lib"}
 )
