@@ -54,7 +54,7 @@ class SketchApi:
     >>> page.name
     'Page 1'
     >>> len(page.layers[0]), page.artBoards, len(page.artBoards[0])
-    (6, [<SketchArtboard name=Artboard 1 w=576 h=783>], 6)
+    (7, [<SketchArtboard name=Artboard 1 w=576 h=783>], 7)
     >>> artBoard = page.artBoards[0]
     >>> e = artBoard.layers[3]
     >>> e, e.name
@@ -78,7 +78,7 @@ class SketchApi:
 
     def getTemplatePath(self):
         resourcesPath = '/'.join(__file__.split('/')[:-1])
-        return = resources_path + '/Resources/Template.sketch' # Default template document.
+        return resourcesPath + '/Resources/Template.sketch' # Default template document.
 
     def __repr__(self):
         return '<%s path=%s>' % (self.__class__.__name__, self.sketchFile.path.split('/')[-1])
