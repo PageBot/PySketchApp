@@ -19,7 +19,7 @@
 #  https://xaviervia.github.io/sketch2json/
 #
 #  https://gist.github.com/xaviervia/edbea95d321feacaf0b5d8acd40614b2
-#  This description is not complete. 
+#  This description is not complete.
 #  Additions made where found in the Reading specification of this context.
 #
 #  http://sketchplugins.com/d/87-new-file-format-in-sketch-43
@@ -31,6 +31,7 @@
 #  Webviewer
 #  https://github.com/AnimaApp/sketch-web-viewer
 #
+
 import os
 import zipfile
 import json
@@ -56,7 +57,7 @@ MS_IMMUTABLE_PAGE = 'MSImmutablePage' # MSJSONFileReference._ref_class value
 # Translating Python-valid attribute names to JSON names for Sketch file.
 JSON_ATTR_NAMES = dict(_from='from', _to='to')
 
-# Defaults 
+# Defaults
 BASE_FRAME = {}
 POINT_ORIGIN = '{0, 0}'
 BLACK_COLOR = dict(red=0, green=0, blue=0, alpha=1)
@@ -85,7 +86,7 @@ POINT_PATTERN = re.compile('\{([e0-9\.\-]*), ([e0-9\.\-]*)\}')
   # type SketchPositionString = string // '{0.5, 0.67135115527602085}'
 
 def newObjectID():
-  """Answer a new random objectID in the pattern of existing ones.
+  """Answers a new random objectID in the pattern of existing ones.
 
   >>> len(newObjectID())
   36
@@ -98,7 +99,7 @@ def newObjectID():
   return '%s-%s-%s-%s-%s' % (t, id1, id2, id3, id4)
 
 class SketchAppBase:
-  """Base class for SketchAppReader and SketchAppWriter"""
+  """Base class for SketchAppReader and SketchAppWriter."""
 
   def __init__(self, overwriteImages=False):
     self.overwriteImages = overwriteImages
@@ -107,22 +108,22 @@ class SketchBase:
 
   REPR_ATTRS = ['name'] # Attributes to be show in __repr__
   ATTRS = {}
-  
-  def __init__(self, **kwargs):
-    """Using **kwargs, the attributes can be set as name values, as well
-    being used from dictionaries in the Sketch JSON file. 
 
-    >>> 
+  def __init__(self, **kwargs):
+    """Using **kwargs, the attributes can be set as name values, as well as
+    being used from dictionaries in the Sketch JSON file.
+
+    >>>
     """
     self._class = self.CLASS # Forces values to default, in case it is not None
     self.parent = None # Save reference to parent layer as weakref.
     self.setAttributes(**kwargs)
 
   def setAttributes(self, **kwargs):
-    """Expect kwargs of attrNames and (method_Or_SketchBaseClass, default) as value.
-    This way the instance can be created from separate attributes, as well
-    as the JSON dict that is read fron a Sketch file.
-    Omitted attributes are initialize from the self.ATTRS class dictionary.
+    """Expects keyword arguments of attrNames and (method_Or_SketchBaseClass,
+    default) as value. This way the instance can be created from separate
+    attributes, as well as the JSON dict that is read fron a Sketch file.
+    Omitted attributes are initialized from the self.ATTRS class dictionary.
 
     >>> d = dict(x=100, y=200, width=300, height=400)
     >>> SketchRect(**d)
@@ -147,10 +148,11 @@ class SketchBase:
     >>> artboard.frame
     <SketchRect x=10 y=20 w=30 h=40>
     """
-    for name, value in kwargs.items(): 
+    for name, value in kwargs.items():
         # If not part of the Sketch ATTRS attribute, just set value unchanged.
         if name not in self.ATTRS:
           setattr(self, name, value)
+
     for name, (m, value) in self.ATTRS.items(): # Create attribute, using method or class
       jsonName = JSON_ATTR_NAMES.get(name, name)
       if name in kwargs: # Valid if "_from" or "_to" are used as direct attribute names.
@@ -178,8 +180,7 @@ class SketchBase:
     return ' '.join(s) + '>'
 
   def __eq__(self, sko):
-    """Answer the boolean flag if self and SketchBase object have
-    the same attribute values.
+    """Answer if self and SketchBase object have the same attribute values.
 
     >>> p1 = SketchPoint(x=10, y=20)
     >>> p2 = SketchPoint(y=20, x=10)
@@ -209,11 +210,10 @@ class SketchBase:
       parent = weakref.ref(parent)
     self._parent = parent
   parent = property(_get_parent, _set_parent)
-  
+
   def _get_root(self):
-    """Answer the root (SketchFile instance) of self, searching upwards 
-    through chain of parents. Answer None if no root can be found.
-    """
+    """Answers the root (SketchFile instance) of self, searching upwards through
+    the chain of parents. Answers None if no root can be found."""
     parent = self.parent # Expand weakref
     if parent is not None:
       return self.parent # Still searching in layer.parent sequence
@@ -229,7 +229,7 @@ class SketchBase:
     return d
 
   def find(self, _class=None, name=None, pattern=None, found=None):
-    """SketchBase class does not have child layers. Just test if self matchs.
+    """SketchBase class does not have child layers. Just test if self matches.
 
     >>> p = SketchPoint(x=0, y=100)
     >>> p.find('point')[0] is p
@@ -265,7 +265,7 @@ class SketchBase:
       # Translate Python name to JSON name
       attrJsonName = JSON_ATTR_NAMES.get(attrName, attrName)
       if isinstance(attr, (list, tuple)):
-        l = [] 
+        l = []
         for e in attr:
           if hasattr(e, 'asJson'):
             l.append(e.asJson())
@@ -286,8 +286,7 @@ class SketchBase:
 
 
 def asRect(sketchNestedPositionString):
-  """
-  type SketchNestedPositionString = string // '{{0, 0}, {75.5, 15}}'
+  """type SketchNestedPositionString = string // '{{0, 0}, {75.5, 15}}'
 
   >>> asRect('{{0, 0}, {75.5, 15}}')
   (0, 0, 75.5, 15)
@@ -312,8 +311,7 @@ def asColorNumber(v):
     return 0
 
 def asNumber(v):
-  """
-  Answer the value interpreted as value or None otherwise
+  """Answers the value interpreted as a value or None otherwise.
 
   >>> asNumber('123')
   123
@@ -378,8 +376,8 @@ def SketchCurvePointList(curvePointList):
   return l
 
 def SketchPositionString(v):
-  """Sketch files keep points and rectangles as string. Decompose 
-  them here, before creating a real SketchPoint instance.
+  """Sketch files keep points and rectangles as string. Decompose them here,
+  before creating a real SketchPoint instance.
 
   >>> SketchPositionString('{0, 0}')
   <SketchPoint x=0 y=0>
@@ -387,14 +385,14 @@ def SketchPositionString(v):
   <SketchPoint x=21 y=-12345>
   >>> SketchPositionString('{10.05, -10.66}')
   <SketchPoint x=10.05 y=-10.66>
-  
+
   """
   sxy = POINT_PATTERN.findall(v)
   assert len(sxy) == 1 and len(sxy[0]) == 2, (sxy, v)
   return SketchPoint(x=asNumber(sxy[0][0]), y=asNumber(sxy[0][1]))
 
 class SketchPoint(SketchBase):
-  """Interpret the {x,y} string into a point2D.
+  """Interprets the {x,y} string into a point2D.
 
   >>> SketchPoint(x=10, y=20)
   <SketchPoint x=10 y=20>
@@ -543,8 +541,8 @@ class SketchGradientStop(SketchBase):
   _class: 'gradientStop',
   color: SketchColor,
   position: number
-  
-  >>> color = SketchColor(blue=1) 
+
+  >>> color = SketchColor(blue=1)
   >>> gs = SketchGradientStop(color=color, position=1)
   >>> gs.color, gs.position
   (<SketchColor red=0 green=0 blue=1 alpha=0>, 1)
@@ -555,7 +553,7 @@ class SketchGradientStop(SketchBase):
   CLASS = 'gradientStop'
   ATTRS = {
     'color': (SketchColor, BLACK_COLOR),
-    'position': (asNumber, 0), 
+    'position': (asNumber, 0),
   }
 
 def SketchGradientStopList(dd):
@@ -695,7 +693,7 @@ class SketchShadow(SketchBase):
     'contextSettings': (SketchGraphicsContextSettings, {}),
     'offsetX': (asNumber, 0),
     'offsetY': (asNumber, 0),
-    'spread': (asNumber, 0),  
+    'spread': (asNumber, 0),
   }
 
 class SketchBlur(SketchBase):
@@ -764,13 +762,13 @@ class SketchRect(SketchBase):
   def _set_w(self, w):
     self.width = w
   w = property(_get_w, _set_w)
-  
+
   def _get_h(self):
     return self.height
   def _set_h(self, h):
     self.height = h
   h = property(_get_h, _set_h)
-  
+
 class SketchTextStyle(SketchBase):
   """
   _class: 'textStyle',
@@ -985,7 +983,7 @@ class SketchCreated(SketchBase):
     'commit': (asString, ''),
     'appVersion': (asString, APP_VERSION),
     'build': (asNumber, 0),
-    'app': (asString, APP_ID),    
+    'app': (asString, APP_ID),
     'version': (asInt, 0),
     'variant': (asString, ''),
     'compatibilityVersion': (asInt, 99)
@@ -1173,7 +1171,7 @@ class SketchLayer(SketchBase):
     assert isinstance(layer, SketchBase)
     self.layers.append(layer)
     layer.parent = self
-    
+
   def find(self, _class=None, name=None, pattern=None, found=None):
     """Check if self matches class, name or pattern. Then search for
     all layers in self.layers.
@@ -1193,7 +1191,7 @@ class SketchLayer(SketchBase):
 
   def asJson(self):
     """Get attributes from base as JSON dict."""
-    d = SketchBase.asJson(self) 
+    d = SketchBase.asJson(self)
     d['layers'] = layers = [] # Add layers list
     for layer in self.layers:
       layers.append(layer.asJson())
@@ -1405,7 +1403,7 @@ class SketchArtboard(SketchLayer):
     'resizesContent': (asBool, True),
   }
   def __repr__(self):
-    return '<%s name=%s w=%d h=%d>' % (self.__class__.__name__, self.name, self.frame.w, self.frame.h)   
+    return '<%s name=%s w=%d h=%d>' % (self.__class__.__name__, self.name, self.frame.w, self.frame.h)
 
 class SketchBitmap(SketchBase):
   """
@@ -1419,7 +1417,7 @@ class SketchBitmap(SketchBase):
   + isFixedToViewport: bool,
   isLocked: bool,
   isVisible: bool,
-  intendedDPI:number, 
+  intendedDPI:number,
   layerListExpandedType: number,
   name: string,
   nameIsFixed: bool,
@@ -1630,7 +1628,7 @@ class SketchOval(SketchBase):
   shouldBreakMaskChain: bool,
   booleanOperation: number,
   edited: bool,
-  path: SketchPathOptional,  
+  path: SketchPathOptional,
   """
   CLASS = 'oval'
   ATTRS = {
@@ -1676,7 +1674,7 @@ class SketchStar(SketchBase):
   shouldBreakMaskChain: bool,
   booleanOperation: number,
   edited: bool,
-  path: SketchPathOptional,  
+  path: SketchPathOptional,
   """
   CLASS = 'star'
   ATTRS = {
@@ -1721,7 +1719,7 @@ class SketchPolygon(SketchBase):
   shouldBreakMaskChain: bool,
   booleanOperation: number,
   edited: bool,
-  path: SketchPathOptional  
+  path: SketchPathOptional
   """
   CLASS = 'polygon'
   ATTRS = {
@@ -1859,7 +1857,7 @@ class SketchPage(SketchLayer):
   """
   _class: 'page',
   do_objectID: UUID,
-  + booleanOperation: number, 
+  + booleanOperation: number,
   + exportOptions: SketchExportOptions,
   + frame: SketchRect,
   + hasClickThrough: bool,
@@ -1885,7 +1883,7 @@ class SketchPage(SketchLayer):
   """
   CLASS = 'page'
   ATTRS = {
-    'do_objectID': (asId, None),    
+    'do_objectID': (asId, None),
     'booleanOperation': (asInt, -1),
     'frame': (SketchRect, BASE_FRAME),
     'exportOptions': (SketchExportOptions, {}),
@@ -1988,11 +1986,11 @@ class SketchFile(SketchBase):
     self.path = path or UNTITLED_SKETCH
     self.pages = {}
     self.document = None
-    self.user = None 
+    self.user = None
     self.meta = None
 
   def __repr__(self):
-    return '<%s path=%s>' % (self.__class__.__name__, self.path.split('/')[-1])   
+    return '<%s path=%s>' % (self.__class__.__name__, self.path.split('/')[-1])
 
   def find(self, _class=None, name=None, pattern=None):
     found = []
@@ -2012,7 +2010,7 @@ class SketchFile(SketchBase):
 
   def _get_imagesPath(self):
     """Answer the _images/ path, related to self.path
-    
+
     >>> SketchFile('/a/b/c/d.sketch').imagesPath
     '/a/b/c/d_images/'
     >>> SketchFile('d.sketch').imagesPath

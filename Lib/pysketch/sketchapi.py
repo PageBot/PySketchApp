@@ -78,7 +78,7 @@ class SketchApi:
 
     def getTemplatePath(self):
         resourcesPath = '/'.join(__file__.split('/')[:-1])
-        return = resources_path + '/Resources/Template.sketch' # Default template document.
+        return resourcesPath + '/Resources/Template.sketch' # Default template document.
 
     def __repr__(self):
         return '<%s path=%s>' % (self.__class__.__name__, self.sketchFile.path.split('/')[-1])
@@ -102,7 +102,7 @@ class SketchApi:
         return style
 
     def save(self, path=None):
-        """Save the current self.skethFile as sketch file.
+        """Saves the current self.skethFile as sketch file.
 
         >>> if not os.path.exists('_export'):
         ...     os.mkdir('_export')
@@ -152,7 +152,7 @@ class SketchApi:
         return g
 
     def _get_pages(self):
-        """Answer the list with SketchPage instanges, read from the file.
+        """Answers the list with SketchPage instances, read from the file.
 
         >>> api = SketchApi()
         >>> api.pages
@@ -162,7 +162,7 @@ class SketchApi:
     pages = property(_get_pages)
 
     def selectPage(self, index):
-        """Select the page with this index. Answer None if the page does not exist.
+        """Selects the page with this index. Answers None if the page does not exist.
 
         >>> api = SketchApi()
         >>> len(api.sketchFile.pages)
@@ -178,8 +178,8 @@ class SketchApi:
         return page
 
     def selectLayer(self, _class=None, name=None, pattern=None):
-        """Select the layer on the current page, indicated by _class,
-        exact name or matching pattern.
+        """Selects the layer on the current page, indicated by _class, exact
+        name or matching pattern.
 
         >>> api = SketchApi()
         >>> page = api.selectPage(0)
@@ -207,7 +207,7 @@ class SketchApi:
         return w, h
 
     def getPages(self):
-        """Answer the list of SketchPage instances.
+        """Answers the list of SketchPage instances.
 
         >>> api = SketchApi()
         >>> api.getPages()
@@ -216,7 +216,7 @@ class SketchApi:
         return self.sketchFile.orderedPages
 
     def getArtboards(self, page=None):
-        """Answer the list of artboards on the current page.
+        """Answers the list of artboards on the current page.
 
         >>> api = SketchApi()
         >>> api.getArtboards()
@@ -230,7 +230,7 @@ class SketchApi:
         return []
 
     def getIdLayers(self):
-        """Recursively run though all layers, answer the dictionary of
+        """Recursively runs though all layers, answer the dictionary of
         {layer.do_objectID: layer, ...}
 
         >>> api = SketchApi()
@@ -243,7 +243,7 @@ class SketchApi:
         return idLayers
 
     def _getIdLayers(self, parentLayer, idLayers):
-        """Recursively run though all layers, answer the dictionary of
+        """Recursively runs though all layers, answer the dictionary of
         {layer.do_objectID: layer, ...}
         """
         for layer in parentLayer.layers:
@@ -288,7 +288,7 @@ class SketchApi:
         print('Sketch.line not implented yet', p1, p2)
 
     def oval(self, x, y, w, h, name=None, **kwargs):
-        """Draw the oval with current fill and stroke.
+        """Draws the oval with current fill and stroke.
 
         >>> api = SketchApi()
         >>> page = api.selectPage(0)
@@ -359,7 +359,6 @@ class SketchApi:
         g = SketchShapeGroup(do_objectID=newObjectID(), style=style, frame=frame,
             name=name, **kwargs)
         self.layer.append(g)
-
         rFrame = dict(_class='rect', x=0, y=0, width=w, height=h)
         r = SketchRectangle(parent=g, frame=rFrame, do_objectID=newObjectID(), name='Path')
         r.points = [
@@ -417,13 +416,9 @@ class SketchApi:
     def image(self, path, p, pageNumber=0, alpha=None):
         print('Sketch.image not implented yet', path, p)
 
-    def XXXimageSize(self, path):
-        """Answers the image size of our test image
-        NOT TO BE IMPLEMENTED HERE,
-        Use generic context method instead.
-        path = getResourcesPath() + '/images/peppertom_lowres_398x530.png'
-        """
-        return None
+    """
+    NOTE: for imageSize(), Use base context method.
+    """
 
     def clipPath(self, clipPath):
         pass
