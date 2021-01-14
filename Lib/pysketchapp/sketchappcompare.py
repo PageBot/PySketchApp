@@ -2,26 +2,21 @@
 # -*- coding: UTF-8 -*-
 # -----------------------------------------------------------------------------
 #
-#  S K E T C H A P P 2 P Y
-#
 #  Copyright (c) 2016+ Buro Petr van Blokland + Claudia Mens
 #  www.pagebot.io
 #  Licensed under MIT conditions
 #
-#  Supporting DrawBot, www.drawbot.com
-#  Supporting Flat, xxyxyz.org/flat
-#  Supporting Sketch, https://github.com/Zahlii/python_sketch_api
 # -----------------------------------------------------------------------------
 #
 #  sketchcompare.py
 #
-#  Take two SketchApp files and compare them. 
+#  Take two SketchApp files and compare them.
 #  Output an oveview of differences.
 #
 import os
-from pysketch.sketchclasses import *
-from pysketch.sketchappreader import SketchAppReader
-from pysketch.sketchappwriter import SketchAppWriter
+from pysketchapp.sketchclasses import *
+from pysketchapp.sketchappreader import SketchAppReader
+from pysketchapp.sketchappwriter import SketchAppWriter
 
 CHECK_ID = False
 
@@ -75,8 +70,8 @@ def _compare(d1, d2, result, path=None):
 def sketchCompare(sketchFile1, sketchFile2, result=None):
     """
     >>> from sketchappreader import SketchAppReader
-    >>> PATH = '../../Test/' 
-    >>> EXPORT_PATH = '_export/' 
+    >>> PATH = '../../Test/'
+    >>> EXPORT_PATH = '_export/'
     >>> if not os.path.exists(EXPORT_PATH):
     ...     os.path.mkdir(EXPORT_PATH)
     >>> testFileNames = (
@@ -105,10 +100,10 @@ def sketchCompare(sketchFile1, sketchFile2, result=None):
     if result is None:
         result = []
     if isinstance(sketchFile1, str):
-        reader = SketchAppReader() 
+        reader = SketchAppReader()
         sketchFile1 = reader.read(sketchFile1)
     if isinstance(sketchFile2, str):
-        reader = SketchAppReader() 
+        reader = SketchAppReader()
         sketchFile2 = reader.read(sketchFile2)
     _compare(sketchFile1, sketchFile2, result)
 

@@ -2,15 +2,10 @@
 # -*- coding: UTF-8 -*-
 # -----------------------------------------------------------------------------
 #
-#  S K E T C H A P P 2 P Y
-#
 #  Copyright (c) 2016+ Buro Petr van Blokland + Claudia Mens
 #  www.pagebot.io
 #  Licensed under MIT conditions
 #
-#  Supporting DrawBot, www.drawbot.com
-#  Supporting Flat, xxyxyz.org/flat
-#  Supporting Sketch, https://github.com/Zahlii/python_sketch_api
 # -----------------------------------------------------------------------------
 #
 #  sketchappreader.py
@@ -27,7 +22,7 @@
 #  Webviewer
 #  https://github.com/AnimaApp/sketch-web-viewer
 #
-from pysketch.sketchclasses import *
+from pysketchapp.sketchclasses import *
 
 class SketchAppReader(SketchAppBase):
 
